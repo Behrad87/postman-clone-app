@@ -3,9 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.10.34818.151
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PostmanCloneLibrary", "PostmanCloneLibrary\PostmanCloneLibrary.csproj", "{6F194941-06A9-4172-9501-B109AE008E7F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PostmanCloneLibrary", "PostmanCloneLibrary\PostmanCloneLibrary.csproj", "{6F194941-06A9-4172-9501-B109AE008E7F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PostmanCloneUI", "PostmanCloneUI\PostmanCloneUI.csproj", "{F45B6816-059D-4A40-BFBD-A7F96BDFD40E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PostmanCloneUI", "PostmanCloneUI\PostmanCloneUI.csproj", "{F45B6816-059D-4A40-BFBD-A7F96BDFD40E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
