@@ -7,6 +7,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PostmanCloneLibrary", "Post
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PostmanCloneUI", "PostmanCloneUI\PostmanCloneUI.csproj", "{F45B6816-059D-4A40-BFBD-A7F96BDFD40E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsoleUI", "ConsoleUI\ConsoleUI.csproj", "{23E04497-F4E2-4606-BF75-63ED562E1057}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PostmanCloneCP", "PostmanCloneCP\PostmanCloneCP.csproj", "{05F0AA53-8893-4659-804C-19CC74D58276}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +25,16 @@ Global
 		{F45B6816-059D-4A40-BFBD-A7F96BDFD40E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F45B6816-059D-4A40-BFBD-A7F96BDFD40E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F45B6816-059D-4A40-BFBD-A7F96BDFD40E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{23E04497-F4E2-4606-BF75-63ED562E1057}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{23E04497-F4E2-4606-BF75-63ED562E1057}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{23E04497-F4E2-4606-BF75-63ED562E1057}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{23E04497-F4E2-4606-BF75-63ED562E1057}.Release|Any CPU.Build.0 = Release|Any CPU
+		{05F0AA53-8893-4659-804C-19CC74D58276}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{05F0AA53-8893-4659-804C-19CC74D58276}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{05F0AA53-8893-4659-804C-19CC74D58276}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
+		{05F0AA53-8893-4659-804C-19CC74D58276}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{05F0AA53-8893-4659-804C-19CC74D58276}.Release|Any CPU.Build.0 = Release|Any CPU
+		{05F0AA53-8893-4659-804C-19CC74D58276}.Release|Any CPU.Deploy.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
