@@ -1,0 +1,45 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:viewmodel="clr-namespace:PostmanCloneCP.ViewModels"
+             x:DataType="viewmodel:MainViewModel"
+             x:Class="PostmanCloneCP.MainPage">
+
+     
+        <ScrollView>
+            <StackLayout Padding="30,0" Spacing="25">
+                <Label Text="Postman Clone" FontSize="Large" HorizontalOptions="StartAndExpand" />
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Entry Grid.Column="0"  Grid.Row="0" Placeholder="Enter API URL here" HorizontalOptions="FillAndExpand" Text="{Binding ApiUrl}"/>
+                    <Button Grid.Column="1"  Text="GO" Grid.Row="0"   Command="{Binding CallApiCommand}" HorizontalOptions="FillAndExpand"/>
+
+                    <ScrollView Grid.Row="1" VerticalOptions="FillAndExpand"  >
+                        <Editor FontSize="Medium" Text="{Binding Response}" IsReadOnly="True" />
+                    </ScrollView>
+
+                    <Editor  
+                     Grid.Row="2"  
+                     IsReadOnly="True" 
+                     HeightRequest="20" 
+                     HorizontalOptions="FillAndExpand" 
+                     Text="{Binding SystemStatus}"/>    
+                </Grid>
+
+
+
+
+
+
+            </StackLayout>
+        </ScrollView>
+
+</ContentPage>
