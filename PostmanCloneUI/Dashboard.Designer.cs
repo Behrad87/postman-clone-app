@@ -46,7 +46,7 @@
             apiLabel.Font = new Font("Segoe UI", 16F);
             apiLabel.Location = new Point(45, 86);
             apiLabel.Name = "apiLabel";
-            apiLabel.Size = new Size(62, 37);
+            apiLabel.Size = new Size(50, 30);
             apiLabel.TabIndex = 0;
             apiLabel.Text = "API:";
             // 
@@ -54,7 +54,7 @@
             // 
             urlTextBox.Location = new Point(143, 74);
             urlTextBox.Name = "urlTextBox";
-            urlTextBox.Size = new Size(724, 47);
+            urlTextBox.Size = new Size(724, 39);
             urlTextBox.TabIndex = 2;
             // 
             // responseTextBox
@@ -84,18 +84,18 @@
             formHeader.AutoSize = true;
             formHeader.Location = new Point(35, 19);
             formHeader.Name = "formHeader";
-            formHeader.Size = new Size(218, 41);
+            formHeader.Size = new Size(174, 32);
             formHeader.TabIndex = 5;
             formHeader.Text = "Postman Clone";
             // 
             // statusStrip
             // 
-            statusStrip.ImageScalingSize = new Size(20, 20);
             statusStrip.BackColor = Color.White;
+            statusStrip.ImageScalingSize = new Size(20, 20);
             statusStrip.Items.AddRange(new ToolStripItem[] { systemStatus });
-            statusStrip.Location = new Point(0, 581);
+            statusStrip.Location = new Point(0, 589);
             statusStrip.Name = "statusStrip";
-            statusStrip.Size = new Size(987, 38);
+            statusStrip.Size = new Size(987, 30);
             statusStrip.TabIndex = 6;
             statusStrip.Text = "statusStrip";
             // 
@@ -103,7 +103,7 @@
             // 
             systemStatus.Font = new Font("Segoe UI", 14F);
             systemStatus.Name = "systemStatus";
-            systemStatus.Size = new Size(78, 32);
+            systemStatus.Size = new Size(62, 25);
             systemStatus.Text = "Ready";
             // 
             // resultLabel
@@ -112,13 +112,13 @@
             resultLabel.Font = new Font("Segoe UI", 16F);
             resultLabel.Location = new Point(35, 142);
             resultLabel.Name = "resultLabel";
-            resultLabel.Size = new Size(99, 37);
+            resultLabel.Size = new Size(79, 30);
             resultLabel.TabIndex = 7;
             resultLabel.Text = "Results";
             // 
             // Dashboard
             // 
-            AutoScaleDimensions = new SizeF(17F, 41F);
+            AutoScaleDimensions = new SizeF(13F, 32F);
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = Color.White;
             ClientSize = new Size(987, 619);
