@@ -11,6 +11,7 @@
 
 	<ItemGroup>
 		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.8" />
 
 	</ItemGroup>
 
@@ -21,7 +22,6 @@
 
 
 	<ItemGroup>
-	  <Folder Include="Views\" />
 	  <Folder Include="Themes\" />
 	</ItemGroup>
 </Project>

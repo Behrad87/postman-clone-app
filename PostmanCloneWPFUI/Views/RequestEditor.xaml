@@ -1,0 +1,209 @@
+<UserControl x:Class="PostmanCloneWPFUI.Views.RequestEditor"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Border Background="{StaticResource BrushBgPanel}"
+            BorderBrush="{StaticResource BrushBorder}" BorderThickness="0,0,1,0">
+        <DockPanel>
+
+            <!-- Section label -->
+            <Border DockPanel.Dock="Top" Padding="14,8"
+                    BorderBrush="{StaticResource BrushBorder}" BorderThickness="0,0,0,1">
+                <TextBlock Text="REQUEST" FontSize="10" FontWeight="SemiBold"  
+                           Foreground="{StaticResource BrushTextMuted}"/>
+            </Border>
+
+            <!-- Sub-tabs: Params / Headers / Body -->
+            <TabControl DockPanel.Dock="Top" Background="Transparent" BorderThickness="0">
+                <!-- PARAMS -->
+                <TabItem Header="Params">
+                    <DockPanel Margin="0,8">
+                        <Border DockPanel.Dock="Top" Padding="8,4,8,6">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="16"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="60"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="1" Text="KEY" FontSize="10" FontWeight="SemiBold"
+                                           Foreground="{StaticResource BrushTextMuted}" Margin="4,0"/>
+                                <TextBlock Grid.Column="2" Text="VALUE" FontSize="10" FontWeight="SemiBold"
+                                           Foreground="{StaticResource BrushTextMuted}" Margin="4,0"/>
+                            </Grid>
+                        </Border>
+                        <ScrollViewer DockPanel.Dock="Top" VerticalScrollBarVisibility="Auto">
+                            <StackPanel>
+                                <ItemsControl ItemsSource="{Binding QueryParams}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="8,2">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="16"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="28"/>
+                                                </Grid.ColumnDefinitions>
+                                                <CheckBox Grid.Column="0" IsChecked="{Binding IsEnabled}"
+                                                          VerticalAlignment="Center"/>
+                                                <TextBox Grid.Column="1" Text="{Binding Key, UpdateSourceTrigger=PropertyChanged}"
+                                                         Margin="4,0" Padding="6,4" FontFamily="Consolas" FontSize="12"/>
+                                                <TextBox Grid.Column="2" Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}"
+                                                         Margin="4,0" Padding="6,4" FontFamily="Consolas" FontSize="12"/>
+                                                <Button Grid.Column="3" Content="✕" FontSize="10"
+                                                        Style="{StaticResource GhostButton}" Padding="4"
+                                                        Command="{Binding DataContext.RemoveParamCommand,
+                                                            RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        CommandParameter="{Binding}"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <Button Content="+ Add Parameter" Style="{StaticResource GhostButton}"
+                                        HorizontalAlignment="Left" Margin="12,6"
+                                        Command="{Binding AddParamCommand}"/>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </DockPanel>
+                </TabItem>
+
+                <!-- HEADERS -->
+                <TabItem Header="Headers">
+                    <DockPanel Margin="0,8">
+                        <Border DockPanel.Dock="Top" Padding="8,4,8,6">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="16"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="28"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="1" Text="KEY" FontSize="10" FontWeight="SemiBold"
+                                           Foreground="{StaticResource BrushTextMuted}" Margin="4,0"/>
+                                <TextBlock Grid.Column="2" Text="VALUE" FontSize="10" FontWeight="SemiBold"
+                                           Foreground="{StaticResource BrushTextMuted}" Margin="4,0"/>
+                            </Grid>
+                        </Border>
+                        <ScrollViewer DockPanel.Dock="Top" VerticalScrollBarVisibility="Auto">
+                            <StackPanel>
+                                <ItemsControl ItemsSource="{Binding Headers}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="8,2">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="16"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="28"/>
+                                                </Grid.ColumnDefinitions>
+                                                <CheckBox Grid.Column="0" IsChecked="{Binding IsEnabled}"
+                                                          VerticalAlignment="Center"/>
+                                                <TextBox Grid.Column="1" Text="{Binding Key, UpdateSourceTrigger=PropertyChanged}"
+                                                         Margin="4,0" Padding="6,4" FontFamily="Consolas" FontSize="12"/>
+                                                <TextBox Grid.Column="2" Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}"
+                                                         Margin="4,0" Padding="6,4" FontFamily="Consolas" FontSize="12"/>
+                                                <Button Grid.Column="3" Content="✕" FontSize="10"
+                                                        Style="{StaticResource GhostButton}" Padding="4"
+                                                        Command="{Binding DataContext.RemoveHeaderCommand,
+                                                            RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        CommandParameter="{Binding}"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <Button Content="+ Add Header" Style="{StaticResource GhostButton}"
+                                        HorizontalAlignment="Left" Margin="12,6"
+                                        Command="{Binding AddHeaderCommand}"/>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </DockPanel>
+                </TabItem>
+
+                <!-- BODY -->
+                <TabItem Header="Body">
+                    <DockPanel Margin="0">
+                        <!-- Body type selector -->
+                        <Border DockPanel.Dock="Top" Padding="12,8"
+                                BorderBrush="{StaticResource BrushBorder}" BorderThickness="0,0,0,1">
+                            <StackPanel Orientation="Horizontal">
+                                <RadioButton Content="none" GroupName="BodyType" Margin="0,0,12,0"
+                                             IsChecked="{Binding BodyType, Converter={StaticResource StringEq}, ConverterParameter=none}"
+                                             Foreground="{StaticResource BrushTextSecondary}" Cursor="Hand"/>
+                                <RadioButton Content="JSON" GroupName="BodyType" Margin="0,0,12,0"
+                                             IsChecked="{Binding BodyType, Converter={StaticResource StringEq}, ConverterParameter=json}"
+                                             Foreground="{StaticResource BrushTextSecondary}" Cursor="Hand"/>
+                                <RadioButton Content="Text" GroupName="BodyType" Margin="0,0,12,0"
+                                             IsChecked="{Binding BodyType, Converter={StaticResource StringEq}, ConverterParameter=text}"
+                                             Foreground="{StaticResource BrushTextSecondary}" Cursor="Hand"/>
+                                <RadioButton Content="XML" GroupName="BodyType" Margin="0,0,12,0"
+                                             IsChecked="{Binding BodyType, Converter={StaticResource StringEq}, ConverterParameter=xml}"
+                                             Foreground="{StaticResource BrushTextSecondary}" Cursor="Hand"/>
+                                <RadioButton Content="Form" GroupName="BodyType"
+                                             IsChecked="{Binding BodyType, Converter={StaticResource StringEq}, ConverterParameter=form}"
+                                             Foreground="{StaticResource BrushTextSecondary}" Cursor="Hand"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- none -->
+                        <Border DockPanel.Dock="Top"
+                                Visibility="{Binding BodyType, Converter={StaticResource StringEqVis}, ConverterParameter=none}"
+                                Padding="24">
+                            <TextBlock Text="This request has no body." Foreground="{StaticResource BrushTextMuted}"
+                                       HorizontalAlignment="Center"/>
+                        </Border>
+
+                        <!-- raw text / json / xml editor -->
+                        <TextBox DockPanel.Dock="Top" Style="{StaticResource CodeTextBox}"
+                                 Text="{Binding BodyContent, UpdateSourceTrigger=PropertyChanged}"
+                                 MinHeight="200" Margin="8"
+                                 Visibility="{Binding BodyType, Converter={StaticResource StringEqVis}, ConverterParameter=json}"/>
+                        <TextBox DockPanel.Dock="Top" Style="{StaticResource CodeTextBox}"
+                                 Text="{Binding BodyContent, UpdateSourceTrigger=PropertyChanged}"
+                                 MinHeight="200" Margin="8"
+                                 Visibility="{Binding BodyType, Converter={StaticResource StringEqVis}, ConverterParameter=text}"/>
+                        <TextBox DockPanel.Dock="Top" Style="{StaticResource CodeTextBox}"
+                                 Text="{Binding BodyContent, UpdateSourceTrigger=PropertyChanged}"
+                                 MinHeight="200" Margin="8"
+                                 Visibility="{Binding BodyType, Converter={StaticResource StringEqVis}, ConverterParameter=xml}"/>
+
+                        <!-- form data -->
+                        <DockPanel DockPanel.Dock="Top"
+                                   Visibility="{Binding BodyType, Converter={StaticResource StringEqVis}, ConverterParameter=form}">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <StackPanel Margin="0,8">
+                                    <ItemsControl ItemsSource="{Binding FormData}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Grid Margin="8,2">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="16"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="28"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <CheckBox Grid.Column="0" IsChecked="{Binding IsEnabled}" VerticalAlignment="Center"/>
+                                                    <TextBox Grid.Column="1" Text="{Binding Key, UpdateSourceTrigger=PropertyChanged}"
+                                                             Margin="4,0" Padding="6,4" FontFamily="Consolas" FontSize="12"/>
+                                                    <TextBox Grid.Column="2" Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}"
+                                                             Margin="4,0" Padding="6,4" FontFamily="Consolas" FontSize="12"/>
+                                                    <Button Grid.Column="3" Content="✕" FontSize="10"
+                                                            Style="{StaticResource GhostButton}" Padding="4"
+                                                            Command="{Binding DataContext.RemoveFormFieldCommand,
+                                                                RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                            CommandParameter="{Binding}"/>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <Button Content="+ Add Field" Style="{StaticResource GhostButton}"
+                                            HorizontalAlignment="Left" Margin="12,6"
+                                            Command="{Binding AddFormFieldCommand}"/>
+                                </StackPanel>
+                            </ScrollViewer>
+                        </DockPanel>
+                    </DockPanel>
+                </TabItem>
+            </TabControl>
+        </DockPanel>
+    </Border>
+</UserControl>
