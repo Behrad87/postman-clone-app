@@ -1,35 +1,25 @@
-﻿using PostmanCloneWPFUI.Views;
+﻿using System.Windows;
 
-using System.Configuration;
-using System.Data;
-using System.Windows;
+using PostmanCloneLibrary;
+using PostmanCloneLibrary.Persistence;
+using PostmanCloneWPFUI.ViewModels;
 
-namespace PostmanCloneWPFUI
+namespace PostmanCloneWPFUI;
+
+public partial class App : Application
 {
-    /// <summary>
-    /// Interaction logic for App.xaml
-    /// </summary>
-    public partial class App : Application
+    protected override async void OnStartup(StartupEventArgs e)
     {
-        private void OnStartup(object sender, StartupEventArgs e)
-        {
-            try
-            {
-                ServiceLocator.Build();
+        base.OnStartup(e);
+        ShutdownMode = ShutdownMode.OnMainWindowClose;
 
-                var window = ServiceLocator.Get<MainWindow>();
+        var store = new JsonAppStore();
+        var api = new ApiAccess();
+        var vm = new MainViewModel(api, store);
+        await vm.InitializeAsync();
 
-                window.Show();
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(
-                    ex.ToString() +
-                    "\n\nINNER:\n" +
-                    ex.InnerException?.ToString(),
-                    "Startup Error");
-            }
-        }
+        var window = new MainWindow(vm);
+        MainWindow = window;
+        window.Show();
     }
-
 }

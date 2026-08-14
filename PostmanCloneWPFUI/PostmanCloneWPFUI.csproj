@@ -6,22 +6,14 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <ApplicationTitle>PostmanClone</ApplicationTitle>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
+  </ItemGroup>
 
-	<ItemGroup>
-		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
-		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.8" />
-
-	</ItemGroup>
-
-
-	<ItemGroup>
-	  <ProjectReference Include="..\PostmanCloneLibrary\PostmanCloneLibrary.csproj" />
-	</ItemGroup>
-
-
-	<ItemGroup>
-	  <Folder Include="Themes\" />
-	</ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\PostmanCloneLibrary\PostmanCloneLibrary.csproj" />
+  </ItemGroup>
 </Project>
