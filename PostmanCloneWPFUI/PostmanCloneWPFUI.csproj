@@ -16,4 +16,8 @@
   <ItemGroup>
     <ProjectReference Include="..\PostmanCloneLibrary\PostmanCloneLibrary.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="ServiceLocator.cs" />
+  </ItemGroup>
 </Project>

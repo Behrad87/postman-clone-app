@@ -12,12 +12,12 @@ public static class JsonHighlightBehavior
         """(?<key>"(?:\\.|[^"\\])*")\s*(?=:)|(?<string>"(?:\\.|[^"\\])*")|(?<number>-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)|(?<keyword>\b(?:true|false|null)\b)|(?<punct>[{}\[\]:,])""",
         RegexOptions.Compiled);
 
-    private static readonly SolidColorBrush KeyBrush = Brush(0x22, 0xD3, 0xEE);
-    private static readonly SolidColorBrush StringBrush = Brush(0x34, 0xD3, 0x99);
-    private static readonly SolidColorBrush NumberBrush = Brush(0xFB, 0xBF, 0x24);
-    private static readonly SolidColorBrush KeywordBrush = Brush(0xC0, 0x84, 0xFC);
-    private static readonly SolidColorBrush PunctBrush = Brush(0x8B, 0x93, 0xB8);
-    private static readonly SolidColorBrush DefaultBrush = Brush(0xF4, 0xF6, 0xFF);
+    private static readonly SolidColorBrush KeyBrush = Brush(0x2E, 0x6B, 0x6B);
+    private static readonly SolidColorBrush StringBrush = Brush(0x3F, 0x7A, 0x4A);
+    private static readonly SolidColorBrush NumberBrush = Brush(0xB8, 0x7A, 0x22);
+    private static readonly SolidColorBrush KeywordBrush = Brush(0x6B, 0x4E, 0x8A);
+    private static readonly SolidColorBrush PunctBrush = Brush(0xA8, 0x96, 0x7C);
+    private static readonly SolidColorBrush DefaultBrush = Brush(0x2B, 0x24, 0x16);
 
     public static readonly DependencyProperty TextProperty =
         DependencyProperty.RegisterAttached(
