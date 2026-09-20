@@ -48,7 +48,7 @@ Pre-built, **self-contained** Windows packages (no .NET runtime required):
 
 | Platform | Interface | Package |
 | :--- | :--- | :--- |
-| **Windows (x64)** | WPF GUI | [⬇️ PostmanClone-windows-x64.zip](https://github.com/Behrad87/postman-clone-app/releases/latest) |
+| **Windows (x64)** | WPF GUI | [⬇️ PostmanClone-v1.0.0-windows-x64.zip](https://github.com/Behrad87/postman-clone-app/releases/download/v1.0.0/PostmanClone-v1.0.0-windows-x64.zip) |
 
 > Or clone and build from source — see [Building from Source](#building-from-source) below.
 
