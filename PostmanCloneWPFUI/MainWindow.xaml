@@ -1,4 +1,4 @@
-﻿<Window x:Class="PostmanCloneWPFUI.MainWindow"
+<Window x:Class="PostmanCloneWPFUI.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:b="clr-namespace:PostmanCloneWPFUI.Behaviors"
@@ -14,9 +14,11 @@
         <KeyBinding Key="Return" Modifiers="Control" Command="{Binding ActiveTab.SendCommand}"/>
         <KeyBinding Key="T" Modifiers="Control" Command="{Binding AddNewTabCommand}"/>
         <KeyBinding Key="W" Modifiers="Control" Command="{Binding CloseActiveTabCommand}"/>
+        <KeyBinding Key="S" Modifiers="Control" Command="{Binding SaveCurrentRequestCommand}"/>
     </Window.InputBindings>
 
     <DockPanel>
+        <!-- Top App Bar -->
         <Border DockPanel.Dock="Top" Background="{StaticResource HeaderGradient}" Padding="14,10" BorderThickness="0,0,0,2" BorderBrush="#FF6C37">
             <Grid>
                 <Grid.ColumnDefinitions>
@@ -50,6 +52,46 @@
             </Grid>
         </Border>
 
+        <!-- Bottom Status Bar -->
+        <Border DockPanel.Dock="Bottom" Background="#0A0C18" BorderBrush="#202644" BorderThickness="0,1,0,0" Padding="14,6">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="⚡" Foreground="{StaticResource CyanBrush}" Margin="0,0,6,0" FontSize="11"/>
+                    <TextBlock Text="Active Env: " Foreground="{StaticResource MutedBrush}" FontSize="11"/>
+                    <TextBlock Text="{Binding ActiveEnvironment.Name, FallbackValue='None'}" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" FontSize="11"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <TextBlock Text="Ctrl+Enter: Send" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,0,18,0"/>
+                    <TextBlock Text="Ctrl+T: New Tab" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,0,18,0"/>
+                    <TextBlock Text="Ctrl+W: Close Tab" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,0,18,0"/>
+                    <TextBlock Text="Ctrl+S: Save" Foreground="{StaticResource MutedBrush}" FontSize="11"/>
+                </StackPanel>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="TLS Verification: " Foreground="{StaticResource MutedBrush}" FontSize="11"/>
+                    <TextBlock FontSize="11" FontWeight="SemiBold">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Text" Value="Strict"/>
+                                <Setter Property="Foreground" Value="{StaticResource GreenBrush}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding ActiveTab.DisableSslVerification}" Value="True">
+                                        <Setter Property="Text" Value="Disabled ⚠️"/>
+                                        <Setter Property="Foreground" Value="#FBBF24"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Main Body -->
         <Grid>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>
@@ -88,15 +130,27 @@
                         </RadioButton>
                     </StackPanel>
 
-                    <!-- Collections -->
+                    <!-- Collections Section -->
                     <DockPanel Visibility="{Binding SidebarSection, Converter={StaticResource EqVis}, ConverterParameter=Collections}">
                         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="8,0,8,8">
                             <Button Content="+ Collection" Command="{Binding AddCollectionCommand}" Style="{StaticResource CyanButton}" Margin="0,0,6,0"/>
                             <Button Content="Import" Command="{Binding ImportCollectionCommand}" Style="{StaticResource PurpleButton}" Margin="0,0,6,0"/>
                             <Button Content="Export" Command="{Binding ExportCollectionCommand}" CommandParameter="{Binding SelectedCollection}"/>
                         </StackPanel>
+                        <Border DockPanel.Dock="Top" Margin="8,0,8,8">
+                            <Grid>
+                                <TextBox Style="{StaticResource SearchTextBox}"
+                                         Text="{Binding CollectionSearchText, UpdateSourceTrigger=PropertyChanged}"
+                                         Padding="26,6,8,6"/>
+                                <TextBlock Text="🔍" FontSize="11" Foreground="{StaticResource MutedBrush}"
+                                           VerticalAlignment="Center" Margin="8,0,0,0" IsHitTestVisible="False"/>
+                                <TextBlock Text="Filter collections..." Foreground="{StaticResource MutedBrush}"
+                                           VerticalAlignment="Center" Margin="28,0,0,0" IsHitTestVisible="False"
+                                           Visibility="{Binding CollectionSearchText, Converter={StaticResource StringEqVis}, ConverterParameter=''}"/>
+                            </Grid>
+                        </Border>
                         <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="8,0">
-                            <ItemsControl ItemsSource="{Binding Collections}">
+                            <ItemsControl ItemsSource="{Binding FilteredCollections}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate DataType="{x:Type vm:CollectionViewModel}">
                                         <Expander IsExpanded="{Binding IsExpanded}" Margin="0,0,0,8">
@@ -170,7 +224,7 @@
                         </ScrollViewer>
                     </DockPanel>
 
-                    <!-- Environments -->
+                    <!-- Environments Section -->
                     <DockPanel Visibility="{Binding SidebarSection, Converter={StaticResource EqVis}, ConverterParameter=Environments}">
                         <StackPanel DockPanel.Dock="Top" Margin="8,0,8,8">
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
@@ -192,18 +246,29 @@
                             <ListBox ItemsSource="{Binding Variables}">
                                 <ListBox.ItemTemplate>
                                     <DataTemplate DataType="{x:Type vm:EnvironmentVariableViewModel}">
-                                        <Grid>
+                                        <Grid Margin="0,2">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="Auto"/>
                                                 <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
                                             <TextBox Grid.Column="0" Text="{Binding Key, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,4,0" Padding="6,4"/>
-                                            <TextBox Grid.Column="1" Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,4,0" Padding="6,4"/>
+                                            <Grid Grid.Column="1" Margin="0,0,4,0">
+                                                <TextBox Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}"
+                                                         Visibility="{Binding IsMasked, Converter={StaticResource BoolToVisInv}}"
+                                                         Padding="6,4"/>
+                                                <TextBox Text="••••••••" IsReadOnly="True"
+                                                         Visibility="{Binding IsMasked, Converter={StaticResource BoolToVis}}"
+                                                         Padding="6,4" Foreground="{StaticResource MutedBrush}"/>
+                                            </Grid>
                                             <CheckBox Grid.Column="2" Content="Secret" IsChecked="{Binding IsSecret}" Margin="0,0,4,0"
                                                       ToolTip="DPAPI-protect this value on disk"/>
-                                            <Button Grid.Column="3" Style="{StaticResource IconButton}" Content="✕"
+                                            <Button Grid.Column="3" Style="{StaticResource IconButton}" Content="👁"
+                                                    Visibility="{Binding IsSecret, Converter={StaticResource BoolToVis}}"
+                                                    Command="{Binding ToggleRevealCommand}" ToolTip="Show/hide secret" Margin="0,0,4,0"/>
+                                            <Button Grid.Column="4" Style="{StaticResource IconButton}" Content="✕"
                                                     Command="{Binding DataContext.RemoveEnvironmentVariableCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                     CommandParameter="{Binding}"/>
                                         </Grid>
@@ -213,15 +278,27 @@
                         </DockPanel>
                     </DockPanel>
 
-                    <!-- History -->
+                    <!-- History Section -->
                     <DockPanel Visibility="{Binding SidebarSection, Converter={StaticResource EqVis}, ConverterParameter=History}">
-                        <Button DockPanel.Dock="Top" Content="Clear history" Command="{Binding ClearHistoryCommand}" Margin="8" HorizontalAlignment="Left" Style="{StaticResource PurpleButton}"/>
-                        <ListBox ItemsSource="{Binding History}"
+                        <DockPanel DockPanel.Dock="Top" Margin="8">
+                            <Button DockPanel.Dock="Right" Content="Clear" Command="{Binding ClearHistoryCommand}" Style="{StaticResource PurpleButton}"/>
+                            <Grid Margin="0,0,8,0">
+                                <TextBox Style="{StaticResource SearchTextBox}"
+                                         Text="{Binding HistorySearchText, UpdateSourceTrigger=PropertyChanged}"
+                                         Padding="26,6,8,6"/>
+                                <TextBlock Text="🔍" FontSize="11" Foreground="{StaticResource MutedBrush}"
+                                           VerticalAlignment="Center" Margin="8,0,0,0" IsHitTestVisible="False"/>
+                                <TextBlock Text="Filter history..." Foreground="{StaticResource MutedBrush}"
+                                           VerticalAlignment="Center" Margin="28,0,0,0" IsHitTestVisible="False"
+                                           Visibility="{Binding HistorySearchText, Converter={StaticResource StringEqVis}, ConverterParameter=''}"/>
+                            </Grid>
+                        </DockPanel>
+                        <ListBox ItemsSource="{Binding FilteredHistory}"
                                  SelectedItem="{Binding SelectedHistoryItem}"
                                  MouseDoubleClick="HistoryList_DoubleClick">
                             <ListBox.ItemTemplate>
                                 <DataTemplate DataType="{x:Type vm:HistoryItemViewModel}">
-                                    <StackPanel>
+                                    <StackPanel Margin="0,3">
                                         <DockPanel>
                                             <Border DockPanel.Dock="Left" Background="{Binding Method, Converter={StaticResource MethodBadgeBg}}"
                                                     CornerRadius="5" Padding="6,2" MinWidth="52" Margin="0,0,8,0">
@@ -248,9 +325,9 @@
             <GridSplitter Grid.Column="1" Width="4" HorizontalAlignment="Center"
                           Visibility="{Binding IsSidebarOpen, Converter={StaticResource BoolToVis}}"/>
 
-            <!-- Main -->
+            <!-- Main Work Area -->
             <DockPanel Grid.Column="2">
-                <!-- Tabs -->
+                <!-- Request Tabs Bar -->
                 <DockPanel DockPanel.Dock="Top" Background="#12162A">
                     <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="+" FontSize="20" FontWeight="Bold"
                             Command="{Binding AddNewTabCommand}" Margin="4,4,10,0" ToolTip="New tab (Ctrl+T)"
@@ -267,6 +344,24 @@
                         <ListBox.ItemTemplate>
                             <DataTemplate DataType="{x:Type vm:RequestTabViewModel}">
                                 <StackPanel Orientation="Horizontal">
+                                    <StackPanel.ContextMenu>
+                                        <ContextMenu>
+                                            <MenuItem Header="Duplicate Tab"
+                                                      Command="{Binding DataContext.DuplicateTabCommand, Source={x:Reference Root}}"
+                                                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+                                            <MenuItem Header="Close Other Tabs"
+                                                      Command="{Binding DataContext.CloseOtherTabsCommand, Source={x:Reference Root}}"
+                                                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+                                            <Separator/>
+                                            <MenuItem Header="Close Tab"
+                                                      Command="{Binding DataContext.CloseTabCommand, Source={x:Reference Root}}"
+                                                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+                                        </ContextMenu>
+                                    </StackPanel.ContextMenu>
+                                    <TextBlock Text="●" Foreground="{StaticResource AccentBrush}" FontSize="9"
+                                               VerticalAlignment="Center" Margin="0,0,6,0"
+                                               Visibility="{Binding IsDirty, Converter={StaticResource BoolToVis}}"
+                                               ToolTip="Unsaved changes"/>
                                     <Border Background="{Binding Method, Converter={StaticResource MethodBadgeBg}}"
                                             CornerRadius="4" Padding="6,1" Margin="0,0,8,0" VerticalAlignment="Center">
                                         <TextBlock Text="{Binding Method}" FontWeight="Bold" FontSize="10"
@@ -282,6 +377,7 @@
                     </ListBox>
                 </DockPanel>
 
+                <!-- Active Request View -->
                 <Grid DataContext="{Binding ActiveTab}">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -293,45 +389,45 @@
                     <!-- URL bar -->
                     <Border Grid.Row="0" Margin="12,12,12,8" Background="{StaticResource SurfaceBrush}"
                             CornerRadius="12" Padding="10" BorderBrush="#2A3358" BorderThickness="1">
-                    <DockPanel>
-                        <ComboBox DockPanel.Dock="Left" Width="118" Margin="0,0,8,0"
-                                  ItemsSource="{Binding HttpMethods}" SelectedItem="{Binding Method}"
-                                  FontWeight="Bold">
-                            <ComboBox.ItemTemplate>
-                                <DataTemplate>
-                                    <TextBlock Text="{Binding}" FontWeight="Bold"
-                                               Foreground="{Binding Converter={StaticResource MethodColor}}"/>
-                                </DataTemplate>
-                            </ComboBox.ItemTemplate>
-                        </ComboBox>
-                        <Button DockPanel.Dock="Right" Content="Send  ▶" Style="{StaticResource SendButton}"
-                                Command="{Binding SendCommand}" IsEnabled="{Binding IsSending, Converter={StaticResource InvertBool}}"
-                                ToolTip="Send (Ctrl+Enter)" Margin="8,0,0,0"/>
-                        <Button DockPanel.Dock="Right" Content="Cancel" Command="{Binding CancelRequestCommand}"
-                                Visibility="{Binding IsSending, Converter={StaticResource BoolToVis}}" Margin="8,0,0,0"/>
-                        <Button DockPanel.Dock="Right" Content="Save" Margin="8,0,0,0" Style="{StaticResource PurpleButton}"
-                                Command="{Binding DataContext.SaveCurrentRequestCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                ToolTip="Save current request to a collection"/>
-                        <Button DockPanel.Dock="Right" Content="Copy as ▾" Click="CopyAs_Click" Margin="8,0,0,0" Style="{StaticResource CyanButton}">
-                            <Button.ContextMenu>
-                                <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
-                                    <MenuItem Header="cURL" Command="{Binding CopyAsCurlCommand}"/>
-                                    <MenuItem Header="Python requests" Command="{Binding CopyAsPythonCommand}"/>
-                                    <MenuItem Header="JavaScript fetch" Command="{Binding CopyAsJsFetchCommand}"/>
-                                </ContextMenu>
-                            </Button.ContextMenu>
-                        </Button>
-                        <CheckBox DockPanel.Dock="Right" Content="Disable SSL" Margin="8,0,0,0"
-                                  IsChecked="{Binding DisableSslVerification}"
-                                  ToolTip="Opt-in per request. Certificates are validated unless this is checked (or the active environment has it enabled)."/>
-                        <TextBox Text="{Binding Url, UpdateSourceTrigger=PropertyChanged}"
-                                 FontFamily="Cascadia Mono, Consolas"
-                                 VerticalContentAlignment="Center">
-                            <TextBox.InputBindings>
-                                <KeyBinding Key="Return" Command="{Binding SendCommand}"/>
-                            </TextBox.InputBindings>
-                        </TextBox>
-                    </DockPanel>
+                        <DockPanel>
+                            <ComboBox DockPanel.Dock="Left" Width="118" Margin="0,0,8,0"
+                                      ItemsSource="{Binding HttpMethods}" SelectedItem="{Binding Method}"
+                                      FontWeight="Bold">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding}" FontWeight="Bold"
+                                                   Foreground="{Binding Converter={StaticResource MethodColor}}"/>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                            <Button DockPanel.Dock="Right" Content="Send  ▶" Style="{StaticResource SendButton}"
+                                    Command="{Binding SendCommand}" IsEnabled="{Binding IsSending, Converter={StaticResource InvertBool}}"
+                                    ToolTip="Send (Ctrl+Enter)" Margin="8,0,0,0"/>
+                            <Button DockPanel.Dock="Right" Content="Cancel" Command="{Binding CancelRequestCommand}"
+                                    Visibility="{Binding IsSending, Converter={StaticResource BoolToVis}}" Margin="8,0,0,0"/>
+                            <Button DockPanel.Dock="Right" Content="Save" Margin="8,0,0,0" Style="{StaticResource PurpleButton}"
+                                    Command="{Binding DataContext.SaveCurrentRequestCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                    ToolTip="Save current request to a collection (Ctrl+S)"/>
+                            <Button DockPanel.Dock="Right" Content="Copy as ▾" Click="CopyAs_Click" Margin="8,0,0,0" Style="{StaticResource CyanButton}">
+                                <Button.ContextMenu>
+                                    <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                                        <MenuItem Header="cURL" Command="{Binding CopyAsCurlCommand}"/>
+                                        <MenuItem Header="Python requests" Command="{Binding CopyAsPythonCommand}"/>
+                                        <MenuItem Header="JavaScript fetch" Command="{Binding CopyAsJsFetchCommand}"/>
+                                    </ContextMenu>
+                                </Button.ContextMenu>
+                            </Button>
+                            <CheckBox DockPanel.Dock="Right" Content="Disable SSL" Margin="8,0,0,0"
+                                      IsChecked="{Binding DisableSslVerification}"
+                                      ToolTip="Opt-in per request. Certificates are validated unless this is checked (or the active environment has it enabled)."/>
+                            <TextBox Text="{Binding Url, UpdateSourceTrigger=PropertyChanged}"
+                                     FontFamily="Cascadia Mono, Consolas"
+                                     VerticalContentAlignment="Center">
+                                <TextBox.InputBindings>
+                                    <KeyBinding Key="Return" Command="{Binding SendCommand}"/>
+                                </TextBox.InputBindings>
+                            </TextBox>
+                        </DockPanel>
                     </Border>
 
                     <!-- Request builder -->
@@ -339,114 +435,41 @@
                         <TextBlock DockPanel.Dock="Top" Text="{Binding UnresolvedWarning}" Foreground="#FAB387" Margin="0,0,0,6"
                                    Visibility="{Binding HasUnresolvedWarning, Converter={StaticResource BoolToVis}}"/>
                         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,4">
-                            <RadioButton Style="{StaticResource SegmentRadio}" Content="Params" GroupName="ReqTab"
-                                         IsChecked="{Binding ActiveRequestTab, Converter={StaticResource StringEq}, ConverterParameter=Params, Mode=TwoWay}"/>
-                            <RadioButton Style="{StaticResource SegmentRadio}" Content="Headers" GroupName="ReqTab"
-                                         IsChecked="{Binding ActiveRequestTab, Converter={StaticResource StringEq}, ConverterParameter=Headers, Mode=TwoWay}"/>
-                            <RadioButton Style="{StaticResource SegmentRadio}" Content="Body" GroupName="ReqTab"
-                                         IsChecked="{Binding ActiveRequestTab, Converter={StaticResource StringEq}, ConverterParameter=Body, Mode=TwoWay}"/>
-                            <RadioButton Style="{StaticResource SegmentRadio}" Content="Auth" GroupName="ReqTab"
-                                         IsChecked="{Binding ActiveRequestTab, Converter={StaticResource StringEq}, ConverterParameter=Auth, Mode=TwoWay}"/>
+                            <RadioButton Style="{StaticResource SegmentRadio}" GroupName="ReqTab"
+                                         IsChecked="{Binding ActiveRequestTab, Converter={StaticResource StringEq}, ConverterParameter=Params, Mode=TwoWay}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="Params"/>
+                                    <TextBlock Text="{Binding ParamsBadge}" Foreground="{StaticResource AccentBrush}" FontWeight="Bold"/>
+                                </StackPanel>
+                            </RadioButton>
+                            <RadioButton Style="{StaticResource SegmentRadio}" GroupName="ReqTab"
+                                         IsChecked="{Binding ActiveRequestTab, Converter={StaticResource StringEq}, ConverterParameter=Headers, Mode=TwoWay}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="Headers"/>
+                                    <TextBlock Text="{Binding HeadersBadge}" Foreground="{StaticResource CyanBrush}" FontWeight="Bold"/>
+                                </StackPanel>
+                            </RadioButton>
+                            <RadioButton Style="{StaticResource SegmentRadio}" GroupName="ReqTab"
+                                         IsChecked="{Binding ActiveRequestTab, Converter={StaticResource StringEq}, ConverterParameter=Body, Mode=TwoWay}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="Body"/>
+                                    <TextBlock Text="{Binding BodyBadge}" Foreground="{StaticResource PinkBrush}" FontSize="11" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </RadioButton>
+                            <RadioButton Style="{StaticResource SegmentRadio}" GroupName="ReqTab"
+                                         IsChecked="{Binding ActiveRequestTab, Converter={StaticResource StringEq}, ConverterParameter=Auth, Mode=TwoWay}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="Auth"/>
+                                    <TextBlock Text="{Binding AuthBadge}" Foreground="{StaticResource GreenBrush}" FontSize="11" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </RadioButton>
                         </StackPanel>
 
                         <Grid>
-                        <!-- Params -->
-                        <DockPanel Visibility="{Binding ActiveRequestTab, Converter={StaticResource EqVis}, ConverterParameter=Params}">
-                            <Button DockPanel.Dock="Bottom" Content="+ Query param" Command="{Binding AddParamCommand}" HorizontalAlignment="Left" Margin="0,8,0,0"/>
-                            <ListBox ItemsSource="{Binding QueryParams}">
-                                <ListBox.ItemTemplate>
-                                    <DataTemplate DataType="{x:Type vm:KeyValueItemViewModel}">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                            </Grid.ColumnDefinitions>
-                                            <CheckBox Grid.Column="0" IsChecked="{Binding IsEnabled}" Margin="0,0,8,0"/>
-                                            <TextBox Grid.Column="1" Text="{Binding Key, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,6,0" Padding="6,4"/>
-                                            <TextBox Grid.Column="2" Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,6,0" Padding="6,4"/>
-                                            <Button Grid.Column="3" Style="{StaticResource IconButton}" Content="✕"
-                                                    Command="{Binding DataContext.RemoveParamCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
-                                                    CommandParameter="{Binding}"/>
-                                        </Grid>
-                                    </DataTemplate>
-                                </ListBox.ItemTemplate>
-                            </ListBox>
-                        </DockPanel>
-
-                        <!-- Headers -->
-                        <DockPanel Visibility="{Binding ActiveRequestTab, Converter={StaticResource EqVis}, ConverterParameter=Headers}">
-                            <Button DockPanel.Dock="Bottom" Content="+ Header" Command="{Binding AddHeaderCommand}" HorizontalAlignment="Left" Margin="0,8,0,0"/>
-                            <ListBox ItemsSource="{Binding Headers}">
-                                <ListBox.ItemTemplate>
-                                    <DataTemplate DataType="{x:Type vm:KeyValueItemViewModel}">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                            </Grid.ColumnDefinitions>
-                                            <CheckBox Grid.Column="0" IsChecked="{Binding IsEnabled}" Margin="0,0,8,0"/>
-                                            <TextBox Grid.Column="1" Text="{Binding Key, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,6,0" Padding="6,4"/>
-                                            <TextBox Grid.Column="2" Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,6,0" Padding="6,4"/>
-                                            <Button Grid.Column="3" Style="{StaticResource IconButton}" Content="✕"
-                                                    Command="{Binding DataContext.RemoveHeaderCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
-                                                    CommandParameter="{Binding}"/>
-                                        </Grid>
-                                    </DataTemplate>
-                                </ListBox.ItemTemplate>
-                            </ListBox>
-                        </DockPanel>
-
-                        <!-- Body -->
-                        <DockPanel Visibility="{Binding ActiveRequestTab, Converter={StaticResource EqVis}, ConverterParameter=Body}">
-                            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
-                                <RadioButton Style="{StaticResource ChipRadio}" Content="None" GroupName="BodyType"
-                                             IsChecked="{Binding BodyType, Converter={StaticResource StringEq}, ConverterParameter=none, Mode=TwoWay}"/>
-                                <RadioButton Style="{StaticResource ChipRadio}" Content="JSON" GroupName="BodyType"
-                                             IsChecked="{Binding BodyType, Converter={StaticResource StringEq}, ConverterParameter=json, Mode=TwoWay}"/>
-                                <RadioButton Style="{StaticResource ChipRadio}" Content="Text" GroupName="BodyType"
-                                             IsChecked="{Binding BodyType, Converter={StaticResource StringEq}, ConverterParameter=text, Mode=TwoWay}"/>
-                                <RadioButton Style="{StaticResource ChipRadio}" Content="XML" GroupName="BodyType"
-                                             IsChecked="{Binding BodyType, Converter={StaticResource StringEq}, ConverterParameter=xml, Mode=TwoWay}"/>
-                                <RadioButton Style="{StaticResource ChipRadio}" Content="x-www-form-urlencoded" GroupName="BodyType"
-                                             IsChecked="{Binding BodyType, Converter={StaticResource StringEq}, ConverterParameter=form, Mode=TwoWay}"/>
-                                <RadioButton Style="{StaticResource ChipRadio}" Content="multipart/form-data" GroupName="BodyType"
-                                             IsChecked="{Binding BodyType, Converter={StaticResource StringEq}, ConverterParameter=multipart, Mode=TwoWay}"/>
-                            </StackPanel>
-                            <Grid>
-                            <TextBox Text="{Binding BodyContent, UpdateSourceTrigger=PropertyChanged}"
-                                     AcceptsReturn="True" TextWrapping="Wrap" FontFamily="Cascadia Mono, Consolas"
-                                     VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
-                                     Visibility="{Binding BodyType, Converter={StaticResource EqVis}, ConverterParameter=json}"/>
-                            <TextBox Text="{Binding BodyContent, UpdateSourceTrigger=PropertyChanged}"
-                                     AcceptsReturn="True" TextWrapping="Wrap" FontFamily="Cascadia Mono, Consolas"
-                                     VerticalScrollBarVisibility="Auto"
-                                     Visibility="{Binding BodyType, Converter={StaticResource EqVis}, ConverterParameter=text}"/>
-                            <TextBox Text="{Binding BodyContent, UpdateSourceTrigger=PropertyChanged}"
-                                     AcceptsReturn="True" TextWrapping="Wrap" FontFamily="Cascadia Mono, Consolas"
-                                     VerticalScrollBarVisibility="Auto"
-                                     Visibility="{Binding BodyType, Converter={StaticResource EqVis}, ConverterParameter=xml}"/>
-                            <TextBlock Text="This request has no body." Foreground="{StaticResource MutedBrush}" Margin="8"
-                                       Visibility="{Binding BodyType, Converter={StaticResource EqVis}, ConverterParameter=none}"/>
-                            <DockPanel>
-                                <DockPanel.Style>
-                                    <Style TargetType="DockPanel">
-                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding BodyType}" Value="form">
-                                                <Setter Property="Visibility" Value="Visible"/>
-                                            </DataTrigger>
-                                            <DataTrigger Binding="{Binding BodyType}" Value="multipart">
-                                                <Setter Property="Visibility" Value="Visible"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </DockPanel.Style>
-                                <Button DockPanel.Dock="Bottom" Content="+ Field" Command="{Binding AddFormFieldCommand}" HorizontalAlignment="Left" Margin="0,8,0,0"/>
-                                <ListBox ItemsSource="{Binding FormData}">
+                            <!-- Params -->
+                            <DockPanel Visibility="{Binding ActiveRequestTab, Converter={StaticResource EqVis}, ConverterParameter=Params}">
+                                <Button DockPanel.Dock="Bottom" Content="+ Query param" Command="{Binding AddParamCommand}" HorizontalAlignment="Left" Margin="0,8,0,0"/>
+                                <ListBox ItemsSource="{Binding QueryParams}">
                                     <ListBox.ItemTemplate>
                                         <DataTemplate DataType="{x:Type vm:KeyValueItemViewModel}">
                                             <Grid>
@@ -455,95 +478,187 @@
                                                     <ColumnDefinition Width="*"/>
                                                     <ColumnDefinition Width="*"/>
                                                     <ColumnDefinition Width="Auto"/>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                    <ColumnDefinition Width="Auto"/>
                                                 </Grid.ColumnDefinitions>
                                                 <CheckBox Grid.Column="0" IsChecked="{Binding IsEnabled}" Margin="0,0,8,0"/>
                                                 <TextBox Grid.Column="1" Text="{Binding Key, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,6,0" Padding="6,4"/>
-                                                <TextBox Grid.Column="2" Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,6,0" Padding="6,4"
-                                                         Visibility="{Binding ItemType, Converter={StaticResource EqVis}, ConverterParameter=text}"/>
-                                                <TextBlock Grid.Column="2" Text="{Binding FileName}" VerticalAlignment="Center"
-                                                           Visibility="{Binding ItemType, Converter={StaticResource EqVis}, ConverterParameter=file}"/>
-                                                <Button Grid.Column="3" Content="File…" Padding="8,4" Margin="0,0,4,0"
-                                                        Command="{Binding DataContext.BrowseFormFileCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
-                                                        CommandParameter="{Binding}"
-                                                        Visibility="{Binding DataContext.BodyType, RelativeSource={RelativeSource AncestorType=ListBox}, Converter={StaticResource EqVis}, ConverterParameter=multipart}"/>
-                                                <Button Grid.Column="4" Style="{StaticResource IconButton}" Content="✕"
-                                                        Command="{Binding DataContext.RemoveFormFieldCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                                <TextBox Grid.Column="2" Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,6,0" Padding="6,4"/>
+                                                <Button Grid.Column="3" Style="{StaticResource IconButton}" Content="✕"
+                                                        Command="{Binding DataContext.RemoveParamCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
                                                         CommandParameter="{Binding}"/>
                                             </Grid>
                                         </DataTemplate>
                                     </ListBox.ItemTemplate>
                                 </ListBox>
                             </DockPanel>
-                            </Grid>
-                        </DockPanel>
 
-                        <!-- Auth -->
-                        <StackPanel Visibility="{Binding ActiveRequestTab, Converter={StaticResource EqVis}, ConverterParameter=Auth}" Margin="4">
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
-                                <RadioButton Style="{StaticResource ChipRadio}" Content="No Auth" GroupName="AuthType"
-                                             IsChecked="{Binding AuthType, Converter={StaticResource StringEq}, ConverterParameter=none, Mode=TwoWay}"/>
-                                <RadioButton Style="{StaticResource ChipRadio}" Content="Bearer Token" GroupName="AuthType"
-                                             IsChecked="{Binding AuthType, Converter={StaticResource StringEq}, ConverterParameter=bearer, Mode=TwoWay}"/>
-                                <RadioButton Style="{StaticResource ChipRadio}" Content="Basic Auth" GroupName="AuthType"
-                                             IsChecked="{Binding AuthType, Converter={StaticResource StringEq}, ConverterParameter=basic, Mode=TwoWay}"/>
-                                <RadioButton Style="{StaticResource ChipRadio}" Content="API Key" GroupName="AuthType"
-                                             IsChecked="{Binding AuthType, Converter={StaticResource StringEq}, ConverterParameter=apikey, Mode=TwoWay}"/>
-                            </StackPanel>
-                            <TextBlock Text="This request will send without an Authorization header." Foreground="{StaticResource MutedBrush}"
-                                       Visibility="{Binding AuthType, Converter={StaticResource EqVis}, ConverterParameter=none}"/>
-                            <StackPanel Visibility="{Binding AuthType, Converter={StaticResource EqVis}, ConverterParameter=bearer}">
-                                <TextBlock Text="Token" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,4"/>
-                                <TextBox Text="{Binding BearerToken, UpdateSourceTrigger=PropertyChanged}" FontFamily="Cascadia Mono, Consolas"/>
-                                <TextBlock Text="Sent as Authorization: Bearer &lt;token&gt;. Supports {{variables}}." Foreground="{StaticResource MutedBrush}" Margin="0,8,0,0"/>
-                            </StackPanel>
-                            <Grid Visibility="{Binding AuthType, Converter={StaticResource EqVis}, ConverterParameter=basic}">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <StackPanel Margin="0,0,8,0">
-                                    <TextBlock Text="Username" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,4"/>
-                                    <TextBox Text="{Binding BasicUsername, UpdateSourceTrigger=PropertyChanged}"/>
+                            <!-- Headers -->
+                            <DockPanel Visibility="{Binding ActiveRequestTab, Converter={StaticResource EqVis}, ConverterParameter=Headers}">
+                                <Button DockPanel.Dock="Bottom" Content="+ Header" Command="{Binding AddHeaderCommand}" HorizontalAlignment="Left" Margin="0,8,0,0"/>
+                                <ListBox ItemsSource="{Binding Headers}">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate DataType="{x:Type vm:KeyValueItemViewModel}">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <CheckBox Grid.Column="0" IsChecked="{Binding IsEnabled}" Margin="0,0,8,0"/>
+                                                <TextBox Grid.Column="1" Text="{Binding Key, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,6,0" Padding="6,4"/>
+                                                <TextBox Grid.Column="2" Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,6,0" Padding="6,4"/>
+                                                <Button Grid.Column="3" Style="{StaticResource IconButton}" Content="✕"
+                                                        Command="{Binding DataContext.RemoveHeaderCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                                        CommandParameter="{Binding}"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </DockPanel>
+
+                            <!-- Body -->
+                            <DockPanel Visibility="{Binding ActiveRequestTab, Converter={StaticResource EqVis}, ConverterParameter=Body}">
+                                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
+                                    <RadioButton Style="{StaticResource ChipRadio}" Content="None" GroupName="BodyType"
+                                                 IsChecked="{Binding BodyType, Converter={StaticResource StringEq}, ConverterParameter=none, Mode=TwoWay}"/>
+                                    <RadioButton Style="{StaticResource ChipRadio}" Content="JSON" GroupName="BodyType"
+                                                 IsChecked="{Binding BodyType, Converter={StaticResource StringEq}, ConverterParameter=json, Mode=TwoWay}"/>
+                                    <RadioButton Style="{StaticResource ChipRadio}" Content="Text" GroupName="BodyType"
+                                                 IsChecked="{Binding BodyType, Converter={StaticResource StringEq}, ConverterParameter=text, Mode=TwoWay}"/>
+                                    <RadioButton Style="{StaticResource ChipRadio}" Content="XML" GroupName="BodyType"
+                                                 IsChecked="{Binding BodyType, Converter={StaticResource StringEq}, ConverterParameter=xml, Mode=TwoWay}"/>
+                                    <RadioButton Style="{StaticResource ChipRadio}" Content="x-www-form-urlencoded" GroupName="BodyType"
+                                                 IsChecked="{Binding BodyType, Converter={StaticResource StringEq}, ConverterParameter=form, Mode=TwoWay}"/>
+                                    <RadioButton Style="{StaticResource ChipRadio}" Content="multipart/form-data" GroupName="BodyType"
+                                                 IsChecked="{Binding BodyType, Converter={StaticResource StringEq}, ConverterParameter=multipart, Mode=TwoWay}"/>
                                 </StackPanel>
-                                <StackPanel Grid.Column="1">
-                                    <TextBlock Text="Password" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,4"/>
-                                    <TextBox Text="{Binding BasicPassword, UpdateSourceTrigger=PropertyChanged}"/>
-                                </StackPanel>
-                            </Grid>
-                            <StackPanel Visibility="{Binding AuthType, Converter={StaticResource EqVis}, ConverterParameter=apikey}">
                                 <Grid>
+                                    <TextBox Text="{Binding BodyContent, UpdateSourceTrigger=PropertyChanged}"
+                                             AcceptsReturn="True" TextWrapping="Wrap" FontFamily="Cascadia Mono, Consolas"
+                                             VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                                             Visibility="{Binding BodyType, Converter={StaticResource EqVis}, ConverterParameter=json}"/>
+                                    <TextBox Text="{Binding BodyContent, UpdateSourceTrigger=PropertyChanged}"
+                                             AcceptsReturn="True" TextWrapping="Wrap" FontFamily="Cascadia Mono, Consolas"
+                                             VerticalScrollBarVisibility="Auto"
+                                             Visibility="{Binding BodyType, Converter={StaticResource EqVis}, ConverterParameter=text}"/>
+                                    <TextBox Text="{Binding BodyContent, UpdateSourceTrigger=PropertyChanged}"
+                                             AcceptsReturn="True" TextWrapping="Wrap" FontFamily="Cascadia Mono, Consolas"
+                                             VerticalScrollBarVisibility="Auto"
+                                             Visibility="{Binding BodyType, Converter={StaticResource EqVis}, ConverterParameter=xml}"/>
+                                    <TextBlock Text="This request has no body." Foreground="{StaticResource MutedBrush}" Margin="8"
+                                               Visibility="{Binding BodyType, Converter={StaticResource EqVis}, ConverterParameter=none}"/>
+                                    <DockPanel>
+                                        <DockPanel.Style>
+                                            <Style TargetType="DockPanel">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding BodyType}" Value="form">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding BodyType}" Value="multipart">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </DockPanel.Style>
+                                        <Button DockPanel.Dock="Bottom" Content="+ Field" Command="{Binding AddFormFieldCommand}" HorizontalAlignment="Left" Margin="0,8,0,0"/>
+                                        <ListBox ItemsSource="{Binding FormData}">
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate DataType="{x:Type vm:KeyValueItemViewModel}">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <CheckBox Grid.Column="0" IsChecked="{Binding IsEnabled}" Margin="0,0,8,0"/>
+                                                        <TextBox Grid.Column="1" Text="{Binding Key, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,6,0" Padding="6,4"/>
+                                                        <TextBox Grid.Column="2" Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,6,0" Padding="6,4"
+                                                                 Visibility="{Binding ItemType, Converter={StaticResource EqVis}, ConverterParameter=text}"/>
+                                                        <TextBlock Grid.Column="2" Text="{Binding FileName}" VerticalAlignment="Center"
+                                                                   Visibility="{Binding ItemType, Converter={StaticResource EqVis}, ConverterParameter=file}"/>
+                                                        <Button Grid.Column="3" Content="File…" Padding="8,4" Margin="0,0,4,0"
+                                                                Command="{Binding DataContext.BrowseFormFileCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                                                CommandParameter="{Binding}"
+                                                                Visibility="{Binding DataContext.BodyType, RelativeSource={RelativeSource AncestorType=ListBox}, Converter={StaticResource EqVis}, ConverterParameter=multipart}"/>
+                                                        <Button Grid.Column="4" Style="{StaticResource IconButton}" Content="✕"
+                                                                Command="{Binding DataContext.RemoveFormFieldCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                                                CommandParameter="{Binding}"/>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+                                    </DockPanel>
+                                </Grid>
+                            </DockPanel>
+
+                            <!-- Auth -->
+                            <StackPanel Visibility="{Binding ActiveRequestTab, Converter={StaticResource EqVis}, ConverterParameter=Auth}" Margin="4">
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                                    <RadioButton Style="{StaticResource ChipRadio}" Content="No Auth" GroupName="AuthType"
+                                                 IsChecked="{Binding AuthType, Converter={StaticResource StringEq}, ConverterParameter=none, Mode=TwoWay}"/>
+                                    <RadioButton Style="{StaticResource ChipRadio}" Content="Bearer Token" GroupName="AuthType"
+                                                 IsChecked="{Binding AuthType, Converter={StaticResource StringEq}, ConverterParameter=bearer, Mode=TwoWay}"/>
+                                    <RadioButton Style="{StaticResource ChipRadio}" Content="Basic Auth" GroupName="AuthType"
+                                                 IsChecked="{Binding AuthType, Converter={StaticResource StringEq}, ConverterParameter=basic, Mode=TwoWay}"/>
+                                    <RadioButton Style="{StaticResource ChipRadio}" Content="API Key" GroupName="AuthType"
+                                                 IsChecked="{Binding AuthType, Converter={StaticResource StringEq}, ConverterParameter=apikey, Mode=TwoWay}"/>
+                                </StackPanel>
+                                <TextBlock Text="This request will send without an Authorization header." Foreground="{StaticResource MutedBrush}"
+                                           Visibility="{Binding AuthType, Converter={StaticResource EqVis}, ConverterParameter=none}"/>
+                                <StackPanel Visibility="{Binding AuthType, Converter={StaticResource EqVis}, ConverterParameter=bearer}">
+                                    <TextBlock Text="Token" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,4"/>
+                                    <TextBox Text="{Binding BearerToken, UpdateSourceTrigger=PropertyChanged}" FontFamily="Cascadia Mono, Consolas"/>
+                                    <TextBlock Text="Sent as Authorization: Bearer &lt;token&gt;. Supports {{variables}}." Foreground="{StaticResource MutedBrush}" Margin="0,8,0,0"/>
+                                </StackPanel>
+                                <Grid Visibility="{Binding AuthType, Converter={StaticResource EqVis}, ConverterParameter=basic}">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
                                     <StackPanel Margin="0,0,8,0">
-                                        <TextBlock Text="Key name" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,4"/>
-                                        <TextBox Text="{Binding ApiKeyName, UpdateSourceTrigger=PropertyChanged}"/>
+                                        <TextBlock Text="Username" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,4"/>
+                                        <TextBox Text="{Binding BasicUsername, UpdateSourceTrigger=PropertyChanged}"/>
                                     </StackPanel>
                                     <StackPanel Grid.Column="1">
-                                        <TextBlock Text="Value" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,4"/>
-                                        <TextBox Text="{Binding ApiKeyValue, UpdateSourceTrigger=PropertyChanged}"/>
+                                        <TextBlock Text="Password" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,4"/>
+                                        <TextBox Text="{Binding BasicPassword, UpdateSourceTrigger=PropertyChanged}"/>
                                     </StackPanel>
                                 </Grid>
-                                <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-                                    <TextBlock Text="Add to" VerticalAlignment="Center" Margin="0,0,12,0" Foreground="{StaticResource MutedBrush}"/>
-                                    <RadioButton Style="{StaticResource ChipRadio}" Content="Header" GroupName="ApiKeyLoc"
-                                                 IsChecked="{Binding ApiKeyLocation, Converter={StaticResource StringEq}, ConverterParameter=header, Mode=TwoWay}"/>
-                                    <RadioButton Style="{StaticResource ChipRadio}" Content="Query param" GroupName="ApiKeyLoc"
-                                                 IsChecked="{Binding ApiKeyLocation, Converter={StaticResource StringEq}, ConverterParameter=query, Mode=TwoWay}"/>
+                                <StackPanel Visibility="{Binding AuthType, Converter={StaticResource EqVis}, ConverterParameter=apikey}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Margin="0,0,8,0">
+                                            <TextBlock Text="Key name" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,4"/>
+                                            <TextBox Text="{Binding ApiKeyName, UpdateSourceTrigger=PropertyChanged}"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1">
+                                            <TextBlock Text="Value" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,4"/>
+                                            <TextBox Text="{Binding ApiKeyValue, UpdateSourceTrigger=PropertyChanged}"/>
+                                        </StackPanel>
+                                    </Grid>
+                                    <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                                        <TextBlock Text="Add to" VerticalAlignment="Center" Margin="0,0,12,0" Foreground="{StaticResource MutedBrush}"/>
+                                        <RadioButton Style="{StaticResource ChipRadio}" Content="Header" GroupName="ApiKeyLoc"
+                                                     IsChecked="{Binding ApiKeyLocation, Converter={StaticResource StringEq}, ConverterParameter=header, Mode=TwoWay}"/>
+                                        <RadioButton Style="{StaticResource ChipRadio}" Content="Query param" GroupName="ApiKeyLoc"
+                                                     IsChecked="{Binding ApiKeyLocation, Converter={StaticResource StringEq}, ConverterParameter=query, Mode=TwoWay}"/>
+                                    </StackPanel>
                                 </StackPanel>
+                                <TextBlock Margin="0,20,0,0" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap"
+                                           Text="OAuth 2.0 is not implemented yet — use Bearer Token with a token you already have."/>
                             </StackPanel>
-                            <TextBlock Margin="0,20,0,0" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap"
-                                       Text="OAuth 2.0 is not implemented yet — use Bearer Token with a token you already have."/>
-                        </StackPanel>
                         </Grid>
                     </DockPanel>
 
                     <GridSplitter Grid.Row="2" Height="4" HorizontalAlignment="Stretch" VerticalAlignment="Center"/>
 
-                    <!-- Response -->
+                    <!-- Response Viewer -->
                     <DockPanel Grid.Row="3" Margin="12,8,12,12">
                         <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
                             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
@@ -551,7 +666,7 @@
                                              IsChecked="{Binding IsPrettyResponse}"/>
                                 <RadioButton Style="{StaticResource ChipRadio}" Content="Raw" GroupName="PrettyRaw"
                                              IsChecked="{Binding IsPrettyResponse, Converter={StaticResource InvertBool}}"/>
-                                <Button Content="Copy" Command="{Binding CopyResponseBodyCommand}" Margin="8,0,0,0"/>
+                                <Button Content="{Binding CopyButtonText}" Command="{Binding CopyResponseBodyCommand}" Margin="8,0,0,0" MinWidth="70"/>
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Visibility="{Binding HasResponse, Converter={StaticResource BoolToVis}}">
                                 <Border Background="{Binding ResponseStatus, Converter={StaticResource StatusBadgeBg}}"
@@ -582,35 +697,60 @@
                         </StackPanel>
 
                         <Grid>
-                        <Border Visibility="{Binding ActiveResponseTab, Converter={StaticResource EqVis}, ConverterParameter=Body}"
-                                Background="#12162A" CornerRadius="10" Padding="12" Margin="0,8,0,0"
-                                BorderBrush="#2A3358" BorderThickness="1">
-                            <Grid>
-                                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="520"
-                                            Visibility="{Binding IsTransportError, Converter={StaticResource BoolToVis}}">
-                                    <TextBlock Text="{Binding ResponseStatusText}" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,8"/>
-                                    <TextBlock Text="{Binding TransportErrorMessage}" TextWrapping="Wrap" TextAlignment="Center" Foreground="{StaticResource MutedBrush}"/>
-                                </StackPanel>
-                                <RichTextBox IsReadOnly="True" IsUndoEnabled="False" BorderThickness="0" Background="Transparent"
-                                             Foreground="{StaticResource TextBrush}" FontFamily="Cascadia Mono, Consolas" FontSize="13"
-                                             VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
-                                             b:JsonHighlightBehavior.Text="{Binding DisplayedResponseBody}"
-                                             b:JsonHighlightBehavior.Highlight="{Binding ShouldHighlightJson}"
-                                             Visibility="{Binding IsTransportError, Converter={StaticResource BoolToVisInv}}"/>
-                            </Grid>
-                        </Border>
+                            <Border Visibility="{Binding ActiveResponseTab, Converter={StaticResource EqVis}, ConverterParameter=Body}"
+                                    Background="#12162A" CornerRadius="10" Padding="12" Margin="0,8,0,0"
+                                    BorderBrush="#2A3358" BorderThickness="1">
+                                <Grid>
+                                    <!-- Empty placeholder state -->
+                                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
+                                                Visibility="{Binding HasResponse, Converter={StaticResource BoolToVisInv}}">
+                                        <TextBlock Text="🚀" FontSize="36" HorizontalAlignment="Center" Margin="0,0,0,8"/>
+                                        <TextBlock Text="Ready to send request" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center" Foreground="{StaticResource TextBrush}"/>
+                                        <TextBlock Text="Enter a URL and click Send (or press Ctrl+Enter) to view status, headers, and body response."
+                                                   Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="440" Margin="0,6,0,0"/>
+                                    </StackPanel>
 
-                        <ListBox Visibility="{Binding ActiveResponseTab, Converter={StaticResource EqVis}, ConverterParameter=Headers}"
-                                 ItemsSource="{Binding ResponseHeaders}" Margin="0,8,0,0">
-                            <ListBox.ItemTemplate>
-                                <DataTemplate>
-                                    <DockPanel>
-                                        <TextBlock Text="{Binding Key}" FontWeight="SemiBold" Width="220" TextTrimming="CharacterEllipsis"/>
-                                        <TextBlock Text="{Binding Value}" TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}"/>
-                                    </DockPanel>
-                                </DataTemplate>
-                            </ListBox.ItemTemplate>
-                        </ListBox>
+                                    <!-- Transport Error State -->
+                                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="520"
+                                                Visibility="{Binding IsTransportError, Converter={StaticResource BoolToVis}}">
+                                        <TextBlock Text="{Binding ResponseStatusText}" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,8" Foreground="{StaticResource PinkBrush}"/>
+                                        <TextBlock Text="{Binding TransportErrorMessage}" TextWrapping="Wrap" TextAlignment="Center" Foreground="{StaticResource MutedBrush}"/>
+                                    </StackPanel>
+
+                                    <!-- Body content -->
+                                    <RichTextBox IsReadOnly="True" IsUndoEnabled="False" BorderThickness="0" Background="Transparent"
+                                                 Foreground="{StaticResource TextBrush}" FontFamily="Cascadia Mono, Consolas" FontSize="13"
+                                                 VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                                                 b:JsonHighlightBehavior.Text="{Binding DisplayedResponseBody}"
+                                                 b:JsonHighlightBehavior.Highlight="{Binding ShouldHighlightJson}">
+                                        <RichTextBox.Style>
+                                            <Style TargetType="RichTextBox">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding HasResponse}" Value="False">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding IsTransportError}" Value="True">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </RichTextBox.Style>
+                                    </RichTextBox>
+                                </Grid>
+                            </Border>
+
+                            <ListBox Visibility="{Binding ActiveResponseTab, Converter={StaticResource EqVis}, ConverterParameter=Headers}"
+                                     ItemsSource="{Binding ResponseHeaders}" Margin="0,8,0,0">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <DockPanel Margin="0,2">
+                                            <TextBlock Text="{Binding Key}" FontWeight="SemiBold" Width="220" TextTrimming="CharacterEllipsis" Foreground="{StaticResource CyanBrush}"/>
+                                            <TextBox Text="{Binding Value, Mode=OneWay}" IsReadOnly="True" BorderThickness="0" Background="Transparent" Foreground="{StaticResource TextBrush}" Padding="0"/>
+                                        </DockPanel>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
                         </Grid>
                     </DockPanel>
                 </Grid>

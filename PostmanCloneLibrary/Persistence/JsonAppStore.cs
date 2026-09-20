@@ -67,11 +67,15 @@ public sealed class JsonAppStore : IAppStore
     public void ScheduleSave(AppState state)
     {
         Snapshot(state);
-        _debounce?.Cancel();
-        _debounce?.Dispose();
-        _debounce = new CancellationTokenSource();
-        var token = _debounce.Token;
-        _ = DebounceWriteAsync(token);
+        try
+        {
+            _debounce?.Cancel();
+        }
+        catch (ObjectDisposedException) { }
+
+        var cts = new CancellationTokenSource();
+        _debounce = cts;
+        _ = DebounceWriteAsync(cts.Token);
     }
 
     public async Task SaveNowAsync(AppState state)
@@ -105,9 +109,13 @@ public sealed class JsonAppStore : IAppStore
             await Task.Delay(500, token);
             await WritePendingAsync();
         }
-        catch (TaskCanceledException)
+        catch (OperationCanceledException)
         {
             // newer save scheduled
+        }
+        catch
+        {
+            // ignore background write transient errors
         }
     }
 
@@ -117,17 +125,36 @@ public sealed class JsonAppStore : IAppStore
         try
         {
             if (_pendingCollections is not null)
-                await File.WriteAllTextAsync(Path.Combine(_dir, "collections.json"), _pendingCollections);
+                await AtomicWriteAsync("collections.json", _pendingCollections);
             if (_pendingEnvironments is not null)
-                await File.WriteAllTextAsync(Path.Combine(_dir, "environments.json"), _pendingEnvironments);
+                await AtomicWriteAsync("environments.json", _pendingEnvironments);
             if (_pendingHistory is not null)
-                await File.WriteAllTextAsync(Path.Combine(_dir, "history.json"), _pendingHistory);
+                await AtomicWriteAsync("history.json", _pendingHistory);
             if (_pendingSession is not null)
-                await File.WriteAllTextAsync(Path.Combine(_dir, "session.json"), _pendingSession);
+                await AtomicWriteAsync("session.json", _pendingSession);
         }
         finally
         {
             _gate.Release();
+        }
+    }
+
+    private async Task AtomicWriteAsync(string fileName, string content)
+    {
+        var targetPath = Path.Combine(_dir, fileName);
+        var tempPath = Path.Combine(_dir, $"{fileName}.{Guid.NewGuid():N}.tmp");
+        try
+        {
+            await File.WriteAllTextAsync(tempPath, content);
+            File.Move(tempPath, targetPath, overwrite: true);
+        }
+        catch
+        {
+            if (File.Exists(tempPath))
+            {
+                try { File.Delete(tempPath); } catch { }
+            }
+            throw;
         }
     }
 

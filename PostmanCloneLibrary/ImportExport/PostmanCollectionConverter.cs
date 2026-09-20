@@ -235,7 +235,14 @@ public static class PostmanCollectionConverter
 
     private static JsonObject ExportItem(SavedRequest saved)
     {
-        var tab = saved.RequestData ?? new RequestTab { Method = saved.Method, Url = saved.Url, Name = saved.Name };
+        var tab = saved.RequestData?.Clone() ?? new RequestTab();
+        if (!string.IsNullOrWhiteSpace(saved.Url))
+            tab.Url = saved.Url;
+        if (!string.IsNullOrWhiteSpace(saved.Method))
+            tab.Method = saved.Method;
+        if (!string.IsNullOrWhiteSpace(saved.Name))
+            tab.Name = saved.Name;
+
         var request = new JsonObject
         {
             ["method"] = tab.Method,

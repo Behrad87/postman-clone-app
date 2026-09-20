@@ -1,23 +1,23 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-
-using Microsoft.Win32;
 
 using PostmanCloneLibrary;
 using PostmanCloneLibrary.Helper;
 using PostmanCloneLibrary.Models;
+using PostmanCloneWPFUI.Services;
 
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
-using System.Windows;
 
 namespace PostmanCloneWPFUI.ViewModels;
 
 public partial class RequestTabViewModel : ObservableObject
 {
     private readonly IApiAccess _httpService;
+    private readonly IDialogService _dialogService;
     private CancellationTokenSource? _cts;
+    private bool _isSyncingUrlAndParams;
 
     public Guid Id { get; set; } = Guid.NewGuid();
 
@@ -61,6 +61,9 @@ public partial class RequestTabViewModel : ObservableObject
     [ObservableProperty] private string _transportErrorMessage = string.Empty;
     [ObservableProperty] private string _unresolvedWarning = string.Empty;
 
+    [ObservableProperty] private string _copyButtonText = "Copy";
+    [ObservableProperty] private string _responseSearchText = string.Empty;
+
     public ObservableCollection<KeyValueItemViewModel> Headers { get; } = [];
     public ObservableCollection<KeyValueItemViewModel> QueryParams { get; } = [];
     public ObservableCollection<KeyValueItemViewModel> FormData { get; } = [];
@@ -74,9 +77,31 @@ public partial class RequestTabViewModel : ObservableObject
         !IsTransportError && JsonFormatter.LooksLikeJson(DisplayedResponseBody);
     public bool HasUnresolvedWarning => !string.IsNullOrWhiteSpace(UnresolvedWarning);
 
-    public RequestTabViewModel(IApiAccess httpService)
+    public string ParamsBadge
+    {
+        get
+        {
+            var count = QueryParams.Count(p => p.IsEnabled && !string.IsNullOrWhiteSpace(p.Key));
+            return count > 0 ? $" ({count})" : string.Empty;
+        }
+    }
+
+    public string HeadersBadge
+    {
+        get
+        {
+            var count = Headers.Count(h => h.IsEnabled && !string.IsNullOrWhiteSpace(h.Key));
+            return count > 0 ? $" ({count})" : string.Empty;
+        }
+    }
+
+    public string BodyBadge => BodyType is not "none" ? $" ({BodyType.ToUpperInvariant()})" : string.Empty;
+    public string AuthBadge => AuthType is not "none" ? $" ({AuthType.ToUpperInvariant()})" : string.Empty;
+
+    public RequestTabViewModel(IApiAccess httpService, IDialogService? dialogService = null)
     {
         _httpService = httpService;
+        _dialogService = dialogService ?? new WpfDialogService();
         Track(Headers);
         Track(QueryParams);
         Track(FormData);
@@ -85,17 +110,28 @@ public partial class RequestTabViewModel : ObservableObject
         IsDirty = false;
     }
 
-    partial void OnUrlChanged(string value) => MarkDirty();
+    partial void OnUrlChanged(string value)
+    {
+        MarkDirty();
+        if (!_isSyncingUrlAndParams)
+            SyncUrlToQueryParams(value);
+    }
+
     partial void OnMethodChanged(string value) => MarkDirty();
     partial void OnBodyContentChanged(string value) => MarkDirty();
     partial void OnNameChanged(string value) => MarkDirty();
     partial void OnBodyTypeChanged(string value)
     {
         MarkDirty();
+        NotifyBadges();
         if ((value is "form" or "multipart") && FormData.Count == 0)
             FormData.Add(new KeyValueItemViewModel());
     }
-    partial void OnAuthTypeChanged(string value) => MarkDirty();
+    partial void OnAuthTypeChanged(string value)
+    {
+        MarkDirty();
+        NotifyBadges();
+    }
     partial void OnBearerTokenChanged(string value) => MarkDirty();
     partial void OnBasicUsernameChanged(string value) => MarkDirty();
     partial void OnBasicPasswordChanged(string value) => MarkDirty();
@@ -110,6 +146,96 @@ public partial class RequestTabViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(DisplayedResponseBody));
         OnPropertyChanged(nameof(ShouldHighlightJson));
+    }
+
+    public void NotifyBadges()
+    {
+        OnPropertyChanged(nameof(ParamsBadge));
+        OnPropertyChanged(nameof(HeadersBadge));
+        OnPropertyChanged(nameof(BodyBadge));
+        OnPropertyChanged(nameof(AuthBadge));
+    }
+
+    private void SyncUrlToQueryParams(string url)
+    {
+        if (_isSyncingUrlAndParams) return;
+        _isSyncingUrlAndParams = true;
+        try
+        {
+            var qIndex = url.IndexOf('?');
+            if (qIndex < 0 || qIndex == url.Length - 1)
+            {
+                return;
+            }
+
+            var queryString = url[(qIndex + 1)..];
+            var pairs = queryString.Split('&', StringSplitOptions.RemoveEmptyEntries);
+
+            foreach (var p in QueryParams)
+                p.PropertyChanged -= ItemChanged;
+            QueryParams.Clear();
+
+            foreach (var pair in pairs)
+            {
+                var eqIndex = pair.IndexOf('=');
+                string k, v;
+                if (eqIndex >= 0)
+                {
+                    k = Uri.UnescapeDataString(pair[..eqIndex]);
+                    v = Uri.UnescapeDataString(pair[(eqIndex + 1)..]);
+                }
+                else
+                {
+                    k = Uri.UnescapeDataString(pair);
+                    v = string.Empty;
+                }
+                var item = new KeyValueItemViewModel { Key = k, Value = v, IsEnabled = true };
+                item.PropertyChanged += ItemChanged;
+                QueryParams.Add(item);
+            }
+            AddEmptyParam();
+            NotifyBadges();
+        }
+        catch
+        {
+            // ignore malformed URI encoding issues during typing
+        }
+        finally
+        {
+            _isSyncingUrlAndParams = false;
+        }
+    }
+
+    private void SyncQueryParamsToUrl()
+    {
+        if (_isSyncingUrlAndParams) return;
+        _isSyncingUrlAndParams = true;
+        try
+        {
+            var currentUrl = Url ?? string.Empty;
+            var qIndex = currentUrl.IndexOf('?');
+            var baseUrl = qIndex >= 0 ? currentUrl[..qIndex] : currentUrl;
+
+            var active = QueryParams.Where(q => q.IsEnabled && !string.IsNullOrWhiteSpace(q.Key)).ToList();
+            if (active.Count == 0)
+            {
+                if (qIndex >= 0)
+                    Url = baseUrl;
+            }
+            else
+            {
+                var qs = string.Join("&", active.Select(q =>
+                    $"{Uri.EscapeDataString(q.Key)}={Uri.EscapeDataString(q.Value ?? string.Empty)}"));
+                Url = baseUrl + "?" + qs;
+            }
+        }
+        catch
+        {
+        }
+        finally
+        {
+            _isSyncingUrlAndParams = false;
+        }
     }
 
     [RelayCommand]
@@ -139,11 +265,11 @@ public partial class RequestTabViewModel : ObservableObject
     [RelayCommand]
     private void BrowseFormFile(KeyValueItemViewModel item)
     {
-        var dlg = new OpenFileDialog { Title = "Select file to upload" };
-        if (dlg.ShowDialog() != true) return;
+        var path = _dialogService.ShowOpenFileDialog("Select file to upload");
+        if (path is null) return;
         item.ItemType = "file";
-        item.FilePath = dlg.FileName;
-        item.Value = System.IO.Path.GetFileName(dlg.FileName);
+        item.FilePath = path;
+        item.Value = System.IO.Path.GetFileName(path);
     }
 
     [RelayCommand]
@@ -189,6 +315,14 @@ public partial class RequestTabViewModel : ObservableObject
             ApplyResponse(response);
             Completed?.Invoke(this, response);
         }
+        catch (OperationCanceledException)
+        {
+            ApplyTransportError("Cancelled", "Request was cancelled.");
+        }
+        catch (Exception ex)
+        {
+            ApplyTransportError("Error", $"An unexpected error occurred: {ex.Message}");
+        }
         finally
         {
             IsSending = false;
@@ -214,11 +348,16 @@ public partial class RequestTabViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void CopyResponseBody()
+    private async Task CopyResponseBody()
     {
         var text = DisplayedResponseBody;
         if (!string.IsNullOrEmpty(text))
-            Clipboard.SetText(text);
+        {
+            _dialogService.SetClipboardText(text);
+            CopyButtonText = "✓ Copied!";
+            await Task.Delay(1500);
+            CopyButtonText = "Copy";
+        }
     }
 
     [RelayCommand]
@@ -263,38 +402,47 @@ public partial class RequestTabViewModel : ObservableObject
 
     public void LoadFrom(RequestTab model)
     {
-        Id = model.Id == Guid.Empty ? Guid.NewGuid() : model.Id;
-        Name = model.Name;
-        Method = string.IsNullOrWhiteSpace(model.Method) ? "GET" : model.Method;
-        Url = model.Url ?? string.Empty;
-        BodyType = string.IsNullOrWhiteSpace(model.BodyType) ? "none" : model.BodyType;
-        BodyContent = model.Body ?? string.Empty;
-        DisableSslVerification = model.DisableSslVerification;
+        _isSyncingUrlAndParams = true;
+        try
+        {
+            Id = model.Id == Guid.Empty ? Guid.NewGuid() : model.Id;
+            Name = model.Name;
+            Method = string.IsNullOrWhiteSpace(model.Method) ? "GET" : model.Method;
+            Url = model.Url ?? string.Empty;
+            BodyType = string.IsNullOrWhiteSpace(model.BodyType) ? "none" : model.BodyType;
+            BodyContent = model.Body ?? string.Empty;
+            DisableSslVerification = model.DisableSslVerification;
 
-        var auth = model.Auth ?? new AuthConfig();
-        AuthType = string.IsNullOrWhiteSpace(auth.Type) ? "none" : auth.Type;
-        BearerToken = auth.BearerToken;
-        BasicUsername = auth.BasicUsername;
-        BasicPassword = auth.BasicPassword;
-        ApiKeyName = string.IsNullOrWhiteSpace(auth.ApiKeyName) ? "X-API-Key" : auth.ApiKeyName;
-        ApiKeyValue = auth.ApiKeyValue;
-        ApiKeyLocation = string.IsNullOrWhiteSpace(auth.ApiKeyLocation) ? "header" : auth.ApiKeyLocation;
+            var auth = model.Auth ?? new AuthConfig();
+            AuthType = string.IsNullOrWhiteSpace(auth.Type) ? "none" : auth.Type;
+            BearerToken = auth.BearerToken;
+            BasicUsername = auth.BasicUsername;
+            BasicPassword = auth.BasicPassword;
+            ApiKeyName = string.IsNullOrWhiteSpace(auth.ApiKeyName) ? "X-API-Key" : auth.ApiKeyName;
+            ApiKeyValue = auth.ApiKeyValue;
+            ApiKeyLocation = string.IsNullOrWhiteSpace(auth.ApiKeyLocation) ? "header" : auth.ApiKeyLocation;
 
-        Replace(Headers, model.Headers);
-        Replace(QueryParams, model.QueryParams);
-        Replace(FormData, model.FormData);
+            Replace(Headers, model.Headers);
+            Replace(QueryParams, model.QueryParams);
+            Replace(FormData, model.FormData);
 
-        if (Headers.Count == 0) AddEmptyHeader();
-        if (QueryParams.Count == 0) AddEmptyParam();
+            if (Headers.Count == 0) AddEmptyHeader();
+            if (QueryParams.Count == 0) AddEmptyParam();
 
-        IsDirty = false;
+            IsDirty = false;
+            NotifyBadges();
+        }
+        finally
+        {
+            _isSyncingUrlAndParams = false;
+        }
     }
 
     private void CopySnippet(Func<RequestTab, string> generator)
     {
         var variables = ResolveVariables?.Invoke() ?? new Dictionary<string, string>();
         var composed = RequestComposer.Compose(ToModel(), variables);
-        Clipboard.SetText(generator(composed.Request));
+        _dialogService.SetClipboardText(generator(composed.Request));
     }
 
     private void ApplyResponse(ResponseData resp)
@@ -383,10 +531,19 @@ public partial class RequestTabViewModel : ObservableObject
                     item.PropertyChanged -= ItemChanged;
             }
             MarkDirty();
+            NotifyBadges();
+            if (ReferenceEquals(items, QueryParams))
+                SyncQueryParamsToUrl();
         };
     }
 
-    private void ItemChanged(object? sender, PropertyChangedEventArgs e) => MarkDirty();
+    private void ItemChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        MarkDirty();
+        NotifyBadges();
+        if (sender is KeyValueItemViewModel item && QueryParams.Contains(item))
+            SyncQueryParamsToUrl();
+    }
 
     private void MarkDirty()
     {

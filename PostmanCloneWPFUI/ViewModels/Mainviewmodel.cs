@@ -1,17 +1,17 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-
-using Microsoft.Win32;
 
 using PostmanCloneLibrary;
 using PostmanCloneLibrary.ImportExport;
 using PostmanCloneLibrary.Models;
 using PostmanCloneLibrary.Persistence;
+using PostmanCloneWPFUI.Services;
 
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using System.ComponentModel;
 using System.IO;
-using System.Windows;
+using System.Windows.Data;
 
 using AppEnvironment = PostmanCloneLibrary.Models.Environment;
 
@@ -21,6 +21,9 @@ public partial class MainViewModel : ObservableObject
 {
     private readonly IApiAccess _httpService;
     private readonly IAppStore _store;
+    private readonly IDialogService _dialogService;
+    private readonly ICollectionView _collectionsView;
+    private readonly ICollectionView _historyView;
     private bool _loading;
 
     [ObservableProperty] private RequestTabViewModel? _activeTab;
@@ -32,27 +35,68 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private SavedRequestViewModel? _selectedSavedRequest;
     [ObservableProperty] private HistoryItemViewModel? _selectedHistoryItem;
 
+    [ObservableProperty] private string _collectionSearchText = string.Empty;
+    [ObservableProperty] private string _historySearchText = string.Empty;
+
     public ObservableCollection<RequestTabViewModel> Tabs { get; } = [];
     public ObservableCollection<CollectionViewModel> Collections { get; } = [];
     public ObservableCollection<HistoryItemViewModel> History { get; } = [];
     public ObservableCollection<EnvironmentViewModel> Environments { get; } = [];
 
+    public ICollectionView FilteredCollections => _collectionsView;
+    public ICollectionView FilteredHistory => _historyView;
+
     public static readonly string[] HttpMethods = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"];
 
-    public MainViewModel(IApiAccess httpService, IAppStore store)
+    public MainViewModel(IApiAccess httpService, IAppStore store, IDialogService? dialogService = null)
     {
         _httpService = httpService;
         _store = store;
+        _dialogService = dialogService ?? new WpfDialogService();
+
+        _collectionsView = CollectionViewSource.GetDefaultView(Collections);
+        _collectionsView.Filter = FilterCollection;
+
+        _historyView = CollectionViewSource.GetDefaultView(History);
+        _historyView.Filter = FilterHistory;
+
         Collections.CollectionChanged += OnTreeChanged;
         Environments.CollectionChanged += OnTreeChanged;
         History.CollectionChanged += OnTreeChanged;
         Tabs.CollectionChanged += OnTreeChanged;
     }
 
+    partial void OnCollectionSearchTextChanged(string value) => _collectionsView.Refresh();
+    partial void OnHistorySearchTextChanged(string value) => _historyView.Refresh();
+
     partial void OnActiveTabChanged(RequestTabViewModel? value) => Touch();
     partial void OnActiveEnvironmentChanged(EnvironmentViewModel? value) => Touch();
     partial void OnIsSidebarOpenChanged(bool value) => Touch();
     partial void OnSidebarSectionChanged(string value) => Touch();
+
+    private bool FilterCollection(object obj)
+    {
+        if (string.IsNullOrWhiteSpace(CollectionSearchText)) return true;
+        if (obj is not CollectionViewModel col) return false;
+
+        var term = CollectionSearchText.Trim();
+        if (col.Name.Contains(term, StringComparison.OrdinalIgnoreCase)) return true;
+        return col.Requests.Any(r =>
+            r.Name.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+            r.Url.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+            r.Method.Contains(term, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private bool FilterHistory(object obj)
+    {
+        if (string.IsNullOrWhiteSpace(HistorySearchText)) return true;
+        if (obj is not HistoryItemViewModel item) return false;
+
+        var term = HistorySearchText.Trim();
+        return item.Url.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+               item.Method.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+               item.StatusCode.ToString().Contains(term, StringComparison.OrdinalIgnoreCase);
+    }
 
     public async Task InitializeAsync()
     {
@@ -81,6 +125,39 @@ public partial class MainViewModel : ObservableObject
     {
         var tab = CreateTab();
         Tabs.Add(tab);
+        ActiveTab = tab;
+        Touch();
+    }
+
+    [RelayCommand]
+    public void DuplicateTab(RequestTabViewModel? tab)
+    {
+        tab ??= ActiveTab;
+        if (tab is null) return;
+        var newTab = CreateTab();
+        newTab.LoadFrom(tab.ToModel());
+        newTab.Name = $"{tab.Name} (Copy)";
+        newTab.IsDirty = true;
+        var idx = Tabs.IndexOf(tab);
+        if (idx >= 0 && idx < Tabs.Count - 1)
+            Tabs.Insert(idx + 1, newTab);
+        else
+            Tabs.Add(newTab);
+        ActiveTab = newTab;
+        Touch();
+    }
+
+    [RelayCommand]
+    public void CloseOtherTabs(RequestTabViewModel? tab)
+    {
+        tab ??= ActiveTab;
+        if (tab is null) return;
+        var toRemove = Tabs.Where(t => t != tab).ToList();
+        foreach (var t in toRemove)
+        {
+            UnhookTab(t);
+            Tabs.Remove(t);
+        }
         ActiveTab = tab;
         Touch();
     }
@@ -130,7 +207,7 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void AddCollection()
     {
-        var name = Dialogs.Prompt.Show("New collection", "Collection name:", "New Collection");
+        var name = _dialogService.Prompt("New collection", "Collection name:", "New Collection");
         if (name is null) return;
         if (string.IsNullOrWhiteSpace(name)) name = "New Collection";
         var col = new CollectionViewModel { Name = name.Trim() };
@@ -146,7 +223,7 @@ public partial class MainViewModel : ObservableObject
     {
         col ??= SelectedCollection;
         if (col is null) return;
-        var name = Dialogs.Prompt.Show("Rename collection", "Collection name:", col.Name);
+        var name = _dialogService.Prompt("Rename collection", "Collection name:", col.Name);
         if (string.IsNullOrWhiteSpace(name)) return;
         col.Name = name.Trim();
         Touch();
@@ -157,8 +234,7 @@ public partial class MainViewModel : ObservableObject
     {
         col ??= SelectedCollection;
         if (col is null) return;
-        if (MessageBox.Show($"Delete collection “{col.Name}” and its {col.Requests.Count} request(s)?",
-                "Delete collection", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+        if (!_dialogService.Confirm($"Delete collection “{col.Name}” and its {col.Requests.Count} request(s)?", "Delete collection"))
             return;
         Collections.Remove(col);
         if (SelectedCollection == col) SelectedCollection = null;
@@ -178,7 +254,7 @@ public partial class MainViewModel : ObservableObject
         }
 
         var saved = SavedRequestViewModel.FromTab(ActiveTab);
-        var name = Dialogs.Prompt.Show("Save request", "Request name:", saved.Name);
+        var name = _dialogService.Prompt("Save request", "Request name:", saved.Name);
         if (name is null) return;
         if (!string.IsNullOrWhiteSpace(name))
             saved.Name = name.Trim();
@@ -186,6 +262,8 @@ public partial class MainViewModel : ObservableObject
         col.IsExpanded = true;
         SelectedCollection = col;
         SidebarSection = "Collections";
+        ActiveTab.Name = saved.Name;
+        ActiveTab.IsDirty = false;
         Touch();
     }
 
@@ -256,7 +334,7 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void AddEnvironment()
     {
-        var name = Dialogs.Prompt.Show("New environment", "Environment name:", "Development");
+        var name = _dialogService.Prompt("New environment", "Environment name:", "Development");
         if (name is null) return;
         if (string.IsNullOrWhiteSpace(name)) name = "Development";
         var env = new EnvironmentViewModel { Name = name.Trim() };
@@ -274,8 +352,7 @@ public partial class MainViewModel : ObservableObject
     {
         env ??= SelectedEnvironment;
         if (env is null || env.IsGlobals) return;
-        if (MessageBox.Show($"Delete environment “{env.Name}”?",
-                "Delete environment", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+        if (!_dialogService.Confirm($"Delete environment “{env.Name}”?", "Delete environment"))
             return;
         Environments.Remove(env);
         if (ActiveEnvironment == env)
@@ -290,7 +367,7 @@ public partial class MainViewModel : ObservableObject
     {
         env ??= SelectedEnvironment;
         if (env is null || env.IsGlobals) return;
-        var name = Dialogs.Prompt.Show("Rename environment", "Environment name:", env.Name);
+        var name = _dialogService.Prompt("Rename environment", "Environment name:", env.Name);
         if (string.IsNullOrWhiteSpace(name)) return;
         env.Name = name.Trim();
         Touch();
@@ -323,16 +400,12 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void ImportCollection()
     {
-        var dlg = new OpenFileDialog
-        {
-            Title = "Import Postman collection",
-            Filter = "Postman Collection (*.json)|*.json|All files (*.*)|*.*"
-        };
-        if (dlg.ShowDialog() != true) return;
+        var path = _dialogService.ShowOpenFileDialog("Import Postman collection", "Postman Collection (*.json)|*.json|All files (*.*)|*.*");
+        if (path is null) return;
 
         try
         {
-            var json = File.ReadAllText(dlg.FileName);
+            var json = File.ReadAllText(path);
             var model = PostmanCollectionConverter.Import(json);
             var vm = CollectionViewModel.FromModel(model);
             HookCollection(vm);
@@ -343,8 +416,7 @@ public partial class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            MessageBox.Show("Could not import that file as a Postman v2.1 collection.\n\n" + ex.Message,
-                "Import failed", MessageBoxButton.OK, MessageBoxImage.Error);
+            _dialogService.ShowMessage("Could not import that file as a Postman v2.1 collection.\n\n" + ex.Message, "Import failed");
         }
     }
 
@@ -353,22 +425,17 @@ public partial class MainViewModel : ObservableObject
     {
         col ??= SelectedCollection;
         if (col is null) return;
-        var dlg = new SaveFileDialog
-        {
-            Title = "Export collection",
-            Filter = "Postman Collection (*.json)|*.json",
-            FileName = SanitizeFileName(col.Name) + ".postman_collection.json"
-        };
-        if (dlg.ShowDialog() != true) return;
+        var defaultName = SanitizeFileName(col.Name) + ".postman_collection.json";
+        var path = _dialogService.ShowSaveFileDialog("Export collection", defaultName, "Postman Collection (*.json)|*.json");
+        if (path is null) return;
 
         try
         {
-            File.WriteAllText(dlg.FileName, PostmanCollectionConverter.Export(col.ToModel()));
+            File.WriteAllText(path, PostmanCollectionConverter.Export(col.ToModel()));
         }
         catch (Exception ex)
         {
-            MessageBox.Show("Could not export the collection.\n\n" + ex.Message,
-                "Export failed", MessageBoxButton.OK, MessageBoxImage.Error);
+            _dialogService.ShowMessage("Could not export the collection.\n\n" + ex.Message, "Export failed");
         }
     }
 
@@ -465,7 +532,7 @@ public partial class MainViewModel : ObservableObject
 
     private RequestTabViewModel CreateTab()
     {
-        var tab = new RequestTabViewModel(_httpService)
+        var tab = new RequestTabViewModel(_httpService, _dialogService)
         {
             ResolveVariables = BuildVariableMap,
             ResolveEnvironmentDisableSsl = () =>

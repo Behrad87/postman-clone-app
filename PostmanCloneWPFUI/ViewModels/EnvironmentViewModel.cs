@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 
 using PostmanCloneLibrary.Models;
 
@@ -49,6 +50,15 @@ public partial class EnvironmentVariableViewModel : ObservableObject
     [ObservableProperty] private string _key = string.Empty;
     [ObservableProperty] private string _value = string.Empty;
     [ObservableProperty] private bool _isSecret;
+    [ObservableProperty] private bool _isRevealed;
+
+    public bool IsMasked => IsSecret && !IsRevealed;
+
+    partial void OnIsSecretChanged(bool value) => OnPropertyChanged(nameof(IsMasked));
+    partial void OnIsRevealedChanged(bool value) => OnPropertyChanged(nameof(IsMasked));
+
+    [RelayCommand]
+    public void ToggleReveal() => IsRevealed = !IsRevealed;
 
     public EnvironmentVariable ToModel() => new()
     {

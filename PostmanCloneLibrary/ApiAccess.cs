@@ -1,4 +1,4 @@
-﻿using PostmanCloneLibrary.Models;
+using PostmanCloneLibrary.Models;
 
 using System.Diagnostics;
 using System.Net.Http;
@@ -30,24 +30,33 @@ public sealed class ApiAccess : IApiAccess, IDisposable
 
     public async Task<ResponseData> SendAsync(RequestTab request, CancellationToken ct = default)
     {
-        var client = request.DisableSslVerification ? _insecureClient : _client;
-        var url = BuildUrl(request.Url, request.QueryParams);
-        using var req = new HttpRequestMessage(new HttpMethod(request.Method), url);
-
-        foreach (var h in request.Headers.Where(h => h.IsEnabled && !string.IsNullOrWhiteSpace(h.Key)))
-        {
-            if (h.Key.Equals("Content-Type", StringComparison.OrdinalIgnoreCase))
-                continue;
-            req.Headers.TryAddWithoutValidation(h.Key, h.Value);
-        }
-
-        var method = request.Method.ToUpperInvariant();
-        if (method is not "HEAD")
-            req.Content = BuildBody(request);
-
         var sw = Stopwatch.StartNew();
         try
         {
+            var client = request.DisableSslVerification ? _insecureClient : _client;
+            var url = BuildUrl(request.Url, request.QueryParams);
+            using var req = new HttpRequestMessage(new HttpMethod(request.Method), url);
+
+            var contentTypeHeader = request.Headers.FirstOrDefault(h =>
+                h.IsEnabled && h.Key.Equals("Content-Type", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(h.Value));
+
+            foreach (var h in request.Headers.Where(h => h.IsEnabled && !string.IsNullOrWhiteSpace(h.Key)))
+            {
+                if (h.Key.Equals("Content-Type", StringComparison.OrdinalIgnoreCase))
+                    continue;
+                req.Headers.TryAddWithoutValidation(h.Key, h.Value);
+            }
+
+            var method = request.Method.ToUpperInvariant();
+            if (method is not "HEAD")
+            {
+                req.Content = BuildBody(request);
+                if (req.Content is not null && contentTypeHeader is not null)
+                {
+                    req.Content.Headers.TryAddWithoutValidation("Content-Type", contentTypeHeader.Value);
+                }
+            }
+
             using var response = await client.SendAsync(req, ct);
             sw.Stop();
 
@@ -92,7 +101,7 @@ public sealed class ApiAccess : IApiAccess, IDisposable
         catch (Exception ex)
         {
             sw.Stop();
-            return TransportError("unknown", $"Unexpected error: {ex.Message}", sw.ElapsedMilliseconds);
+            return TransportError("unknown", $"Request error: {ex.Message}", sw.ElapsedMilliseconds);
         }
     }
 

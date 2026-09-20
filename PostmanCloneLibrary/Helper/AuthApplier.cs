@@ -17,7 +17,7 @@ public static class AuthApplier
                 UpsertHeader(request, "Authorization", $"Bearer {auth.BearerToken}");
                 break;
 
-            case "basic":
+            case "basic" when !string.IsNullOrEmpty(auth.BasicUsername) || !string.IsNullOrEmpty(auth.BasicPassword):
             {
                 var raw = $"{auth.BasicUsername}:{auth.BasicPassword}";
                 var token = Convert.ToBase64String(Encoding.UTF8.GetBytes(raw));

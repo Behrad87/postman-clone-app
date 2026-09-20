@@ -9,8 +9,8 @@ public static class RequestComposer
     public static ComposeResult Compose(RequestTab source, IReadOnlyDictionary<string, string>? variables)
     {
         var clone = source.Clone();
-        NormalizeUrl(clone);
         var unresolved = VariableInterpolator.Apply(clone, variables);
+        NormalizeUrl(clone);
         AuthApplier.Apply(clone);
         return new ComposeResult(clone, unresolved);
     }

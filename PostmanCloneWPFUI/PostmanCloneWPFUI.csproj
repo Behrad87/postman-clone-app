@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -11,6 +11,8 @@
 
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0-preview.1.25080.5" Condition="'$(TargetFramework)' == 'net10.0-windows'" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.2" Condition="'$(TargetFramework)' != 'net10.0-windows'" />
   </ItemGroup>
 
   <ItemGroup>

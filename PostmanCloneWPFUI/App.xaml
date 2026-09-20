@@ -1,4 +1,4 @@
-﻿<Application x:Class="PostmanCloneWPFUI.App"
+<Application x:Class="PostmanCloneWPFUI.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:conv="clr-namespace:PostmanCloneWPFUI.Converters">
@@ -9,6 +9,7 @@
         <conv:NullToVisibilityConverter x:Key="NullToVisInv" Invert="True"/>
         <conv:StringEqualityConverter x:Key="StringEq"/>
         <conv:StringEqualityToVisibilityConverter x:Key="EqVis"/>
+        <conv:StringEqualityToVisibilityConverter x:Key="StringEqVis"/>
         <conv:MethodColorConverter x:Key="MethodColor"/>
         <conv:MethodBadgeBackgroundConverter x:Key="MethodBadgeBg"/>
         <conv:StatusCodeColorConverter x:Key="StatusColor"/>
@@ -194,10 +195,58 @@
             <Setter Property="Cursor" Value="Hand"/>
         </Style>
 
-        <Style TargetType="ScrollBar">
-            <Setter Property="Width" Value="8"/>
-            <Setter Property="MinWidth" Value="8"/>
+        <Style x:Key="ModernScrollBarThumb" TargetType="{x:Type Thumb}">
+            <Setter Property="OverridesDefaultStyle" Value="true"/>
+            <Setter Property="IsTabStop" Value="false"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Thumb}">
+                        <Border x:Name="ThumbBorder" CornerRadius="4" Background="#3D4678" Margin="2"/>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="true">
+                                <Setter TargetName="ThumbBorder" Property="Background" Value="#7C5CFF"/>
+                            </Trigger>
+                            <Trigger Property="IsDragging" Value="true">
+                                <Setter TargetName="ThumbBorder" Property="Background" Value="{StaticResource AccentBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="{x:Type ScrollBar}">
             <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type ScrollBar}">
+                        <Grid x:Name="Bg" Background="Transparent" SnapsToDevicePixels="true">
+                            <Track x:Name="PART_Track" IsDirectionReversed="true">
+                                <Track.Thumb>
+                                    <Thumb Style="{StaticResource ModernScrollBarThumb}"/>
+                                </Track.Thumb>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="Orientation" Value="Vertical">
+                    <Setter Property="Width" Value="10"/>
+                    <Setter Property="MinWidth" Value="10"/>
+                </Trigger>
+                <Trigger Property="Orientation" Value="Horizontal">
+                    <Setter Property="Height" Value="10"/>
+                    <Setter Property="MinHeight" Value="10"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="SearchTextBox" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+            <Setter Property="Padding" Value="8,5"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Background" Value="#161A2E"/>
+            <Setter Property="BorderBrush" Value="#2A3358"/>
         </Style>
 
         <Style TargetType="ScrollViewer">
